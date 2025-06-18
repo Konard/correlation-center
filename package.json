@@ -1,6 +1,7 @@
 {
   "name": "needs-and-resources-bot",
   "version": "1.0.0",
+  "type": "module",
   "description": "Telegram bot to manage needs and resources",
   "main": "index.js",
   "scripts": {

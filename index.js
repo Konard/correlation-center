@@ -1,8 +1,12 @@
-require('dotenv').config();
-const { Telegraf } = require('telegraf');
-const { Low, JSONFile } = require('lowdb');
-const fs = require('fs');
-const path = require('path');
+import 'dotenv/config';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import path from 'path';
+import { Telegraf } from 'telegraf';
+import { Low, JSONFile } from 'lowdb';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load localization files
 const locales = {
@@ -38,88 +42,88 @@ function getUserData(ctx) {
   return db.data.users[id];
 }
 
-(async () => {
-  await initDB();
+// Initialize database
+await initDB();
 
-  const bot = new Telegraf(process.env.BOT_TOKEN);
+// Initialize bot
+const bot = new Telegraf(process.env.BOT_TOKEN);
 
-  bot.start(async (ctx) => {
-    await db.read();
-    getUserData(ctx);
-    await db.write();
-    await ctx.reply(t(ctx, 'welcome'));
-  });
+bot.start(async (ctx) => {
+  await db.read();
+  getUserData(ctx);
+  await db.write();
+  await ctx.reply(t(ctx, 'welcome'));
+});
 
-  bot.command('addneed', async (ctx) => {
-    await db.read();
-    const user = getUserData(ctx);
-    const input = ctx.message.text.split(' ').slice(1).join(' ');
-    if (!input) return ctx.reply(t(ctx, 'addNeedUsage'));
-    user.needs.push(input);
-    await db.write();
-    ctx.reply(t(ctx, 'addNeedSuccess', { item: input }));
-  });
+bot.command('addneed', async (ctx) => {
+  await db.read();
+  const user = getUserData(ctx);
+  const input = ctx.message.text.split(' ').slice(1).join(' ');
+  if (!input) return ctx.reply(t(ctx, 'addNeedUsage'));
+  user.needs.push(input);
+  await db.write();
+  ctx.reply(t(ctx, 'addNeedSuccess', { item: input }));
+});
 
-  bot.command('listneeds', async (ctx) => {
-    await db.read();
-    const user = getUserData(ctx);
-    if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
-    const list = user.needs.map((n, i) => `${i + 1}. ${n}`).join('\n');
-    ctx.reply(t(ctx, 'listNeeds', { list }));
-  });
+bot.command('listneeds', async (ctx) => {
+  await db.read();
+  const user = getUserData(ctx);
+  if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
+  const list = user.needs.map((n, i) => `${i + 1}. ${n}`).join('\n');
+  ctx.reply(t(ctx, 'listNeeds', { list }));
+});
 
-  bot.command('deleteneed', async (ctx) => {
-    await db.read();
-    const user = getUserData(ctx);
-    const arg = ctx.message.text.split(' ')[1];
-    const index = parseInt(arg, 10);
-    if (!arg || isNaN(index) || index < 1 || index > user.needs.length) {
-      return ctx.reply(t(ctx, 'deleteNeedUsage'));
-    }
-    const removed = user.needs.splice(index - 1, 1)[0];
-    await db.write();
-    ctx.reply(t(ctx, 'deleteNeedSuccess', { item: removed }));
-  });
+bot.command('deleteneed', async (ctx) => {
+  await db.read();
+  const user = getUserData(ctx);
+  const arg = ctx.message.text.split(' ')[1];
+  const index = parseInt(arg, 10);
+  if (!arg || isNaN(index) || index < 1 || index > user.needs.length) {
+    return ctx.reply(t(ctx, 'deleteNeedUsage'));
+  }
+  const removed = user.needs.splice(index - 1, 1)[0];
+  await db.write();
+  ctx.reply(t(ctx, 'deleteNeedSuccess', { item: removed }));
+});
 
-  bot.command('addresource', async (ctx) => {
-    await db.read();
-    const user = getUserData(ctx);
-    const input = ctx.message.text.split(' ').slice(1).join(' ');
-    if (!input) return ctx.reply(t(ctx, 'addResourceUsage'));
-    user.resources.push(input);
-    await db.write();
-    ctx.reply(t(ctx, 'addResourceSuccess', { item: input }));
-  });
+bot.command('addresource', async (ctx) => {
+  await db.read();
+  const user = getUserData(ctx);
+  const input = ctx.message.text.split(' ').slice(1).join(' ');
+  if (!input) return ctx.reply(t(ctx, 'addResourceUsage'));
+  user.resources.push(input);
+  await db.write();
+  ctx.reply(t(ctx, 'addResourceSuccess', { item: input }));
+});
 
-  bot.command('listresources', async (ctx) => {
-    await db.read();
-    const user = getUserData(ctx);
-    if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
-    const list = user.resources.map((r, i) => `${i + 1}. ${r}`).join('\n');
-    ctx.reply(t(ctx, 'listResources', { list }));
-  });
+bot.command('listresources', async (ctx) => {
+  await db.read();
+  const user = getUserData(ctx);
+  if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
+  const list = user.resources.map((r, i) => `${i + 1}. ${r}`).join('\n');
+  ctx.reply(t(ctx, 'listResources', { list }));
+});
 
-  bot.command('deleteresource', async (ctx) => {
-    await db.read();
-    const user = getUserData(ctx);
-    const arg = ctx.message.text.split(' ')[1];
-    const index = parseInt(arg, 10);
-    if (!arg || isNaN(index) || index < 1 || index > user.resources.length) {
-      return ctx.reply(t(ctx, 'deleteResourceUsage'));
-    }
-    const removed = user.resources.splice(index - 1, 1)[0];
-    await db.write();
-    ctx.reply(t(ctx, 'deleteResourceSuccess', { item: removed }));
-  });
+bot.command('deleteresource', async (ctx) => {
+  await db.read();
+  const user = getUserData(ctx);
+  const arg = ctx.message.text.split(' ')[1];
+  const index = parseInt(arg, 10);
+  if (!arg || isNaN(index) || index < 1 || index > user.resources.length) {
+    return ctx.reply(t(ctx, 'deleteResourceUsage'));
+  }
+  const removed = user.resources.splice(index - 1, 1)[0];
+  await db.write();
+  ctx.reply(t(ctx, 'deleteResourceSuccess', { item: removed }));
+});
 
-  console.log('Launching bot...');
-  const launchPromise = bot.launch();
-  console.log('Bot started');
-  launchPromise.catch((error) => {
-    console.error('Failed to launch bot. Please check your BOT_TOKEN:', error);
-    process.exit(1);
-  });
+// Launch bot
+console.log('Launching bot...');
+bot.launch().catch((error) => {
+  console.error('Failed to launch bot. Please check your BOT_TOKEN:', error);
+  process.exit(1);
+});
+console.log('Bot started');
 
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
-})(); 
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM')); 
