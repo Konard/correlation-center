@@ -1,0 +1,14 @@
+{
+  "name": "needs-and-resources-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot to manage needs and resources",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "telegraf": "^4.12.3",
+    "lowdb": "^3.0.0",
+    "dotenv": "^16.0.0"
+  }
+} 

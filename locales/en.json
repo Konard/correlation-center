@@ -1,0 +1,15 @@
+{
+  "welcome": "Welcome to Needs and Resources Bot!",
+  "addNeedUsage": "Usage: /addneed <need>",
+  "addNeedSuccess": "Need added: {{item}}",
+  "noNeeds": "You have no needs.",
+  "listNeeds": "Your needs:\n{{list}}",
+  "deleteNeedUsage": "Usage: /deleteneed <number>",
+  "deleteNeedSuccess": "Need removed: {{item}}",
+  "addResourceUsage": "Usage: /addresource <resource>",
+  "addResourceSuccess": "Resource added: {{item}}",
+  "noResources": "You have no resources.",
+  "listResources": "Your resources:\n{{list}}",
+  "deleteResourceUsage": "Usage: /deleteresource <number>",
+  "deleteResourceSuccess": "Resource removed: {{item}}"
+} 

@@ -1,0 +1,15 @@
+{
+  "welcome": "Добро пожаловать в бот Потребности и Ресурсы!",
+  "addNeedUsage": "Использование: /addneed <потребность>",
+  "addNeedSuccess": "Потребность добавлена: {{item}}",
+  "noNeeds": "У вас нет потребностей.",
+  "listNeeds": "Ваши потребности:\n{{list}}",
+  "deleteNeedUsage": "Использование: /deleteneed <номер>",
+  "deleteNeedSuccess": "Потребность удалена: {{item}}",
+  "addResourceUsage": "Использование: /addresource <ресурс>",
+  "addResourceSuccess": "Ресурс добавлен: {{item}}",
+  "noResources": "У вас нет ресурсов.",
+  "listResources": "Ваши ресурсы:\n{{list}}",
+  "deleteResourceUsage": "Использование: /deleteresource <номер>",
+  "deleteResourceSuccess": "Ресурс удален: {{item}}"
+} 
