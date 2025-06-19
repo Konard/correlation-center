@@ -1,5 +1,6 @@
 {
-  "welcome": "Welcome to Needs and Resources Bot!",
+  "welcome": "Welcome to Needs and Resources Bot!\nType /help to see all commands.",
+  "help": "Available commands:\n/start - Start the bot\n/help - Show this help message\n/addneed <need> - Add a need\n/listneeds - List your needs\n/deleteneed <number> - Delete a need\n/addresource <resource> - Add a resource\n/listresources - List your resources\n/deleteresource <number> - Delete a resource",
   "addNeedUsage": "Usage: /addneed <need>",
   "addNeedSuccess": "Need added: {{item}}",
   "noNeeds": "You have no needs.",
@@ -12,4 +13,4 @@
   "listResources": "Your resources:\n{{list}}",
   "deleteResourceUsage": "Usage: /deleteresource <number>",
   "deleteResourceSuccess": "Resource removed: {{item}}"
-} 
+}

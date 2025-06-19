@@ -100,6 +100,10 @@ bot.command('deleteresource', async (ctx) => {
   ctx.reply(t(ctx, 'deleteResourceSuccess', { item: removed }));
 });
 
+bot.command('help', async (ctx) => {
+  await ctx.reply(t(ctx, 'help'));
+});
+
 // Launch bot
 console.log('Launching bot...');
 bot.launch().catch((error) => {
