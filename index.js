@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { Telegraf } from 'telegraf';
 import Storage from './storage.js';
+import { v7 as uuidv7 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,7 +44,12 @@ bot.command('addneed', async (ctx) => {
   const user = storage.getUserData(ctx);
   const input = ctx.message.text.split(' ').slice(1).join(' ');
   if (!input) return ctx.reply(t(ctx, 'addNeedUsage'));
-  user.needs.push(input);
+  const need = {
+    requestor: ctx.from.username || ctx.from.first_name || 'unknown',
+    guid: uuidv7(),
+    description: input
+  };
+  user.needs.push(need);
   await storage.writeDB();
   ctx.reply(t(ctx, 'addNeedSuccess', { item: input }));
 });
@@ -52,7 +58,7 @@ bot.command('listneeds', async (ctx) => {
   await storage.readDB();
   const user = storage.getUserData(ctx);
   if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
-  const list = user.needs.map((n, i) => `${i + 1}. ${n}`).join('\n');
+  const list = user.needs.map((n, i) => `${i + 1}. ${n.description} (by ${n.requestor}, id: ${n.guid})`).join('\n');
   ctx.reply(t(ctx, 'listNeeds', { list }));
 });
 
@@ -66,7 +72,7 @@ bot.command('deleteneed', async (ctx) => {
   }
   const removed = user.needs.splice(index - 1, 1)[0];
   await storage.writeDB();
-  ctx.reply(t(ctx, 'deleteNeedSuccess', { item: removed }));
+  ctx.reply(t(ctx, 'deleteNeedSuccess', { item: removed.description }));
 });
 
 bot.command('addresource', async (ctx) => {
@@ -74,7 +80,12 @@ bot.command('addresource', async (ctx) => {
   const user = storage.getUserData(ctx);
   const input = ctx.message.text.split(' ').slice(1).join(' ');
   if (!input) return ctx.reply(t(ctx, 'addResourceUsage'));
-  user.resources.push(input);
+  const resource = {
+    supplier: ctx.from.username || ctx.from.first_name || 'unknown',
+    guid: uuidv7(),
+    description: input
+  };
+  user.resources.push(resource);
   await storage.writeDB();
   ctx.reply(t(ctx, 'addResourceSuccess', { item: input }));
 });
@@ -83,7 +94,7 @@ bot.command('listresources', async (ctx) => {
   await storage.readDB();
   const user = storage.getUserData(ctx);
   if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
-  const list = user.resources.map((r, i) => `${i + 1}. ${r}`).join('\n');
+  const list = user.resources.map((r, i) => `${i + 1}. ${r.description} (by ${r.supplier}, id: ${r.guid})`).join('\n');
   ctx.reply(t(ctx, 'listResources', { list }));
 });
 
@@ -97,7 +108,7 @@ bot.command('deleteresource', async (ctx) => {
   }
   const removed = user.resources.splice(index - 1, 1)[0];
   await storage.writeDB();
-  ctx.reply(t(ctx, 'deleteResourceSuccess', { item: removed }));
+  ctx.reply(t(ctx, 'deleteResourceSuccess', { item: removed.description }));
 });
 
 bot.command('help', async (ctx) => {
