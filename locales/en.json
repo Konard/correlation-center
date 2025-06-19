@@ -16,5 +16,7 @@
   "noResources": "You have no resources.",
   "listResources": "Your resources:\n{{list}}",
   "deleteResourceUsage": "Usage: /deleteresource <number>",
-  "deleteResourceSuccess": "Resource removed: {{item}}"
+  "deleteResourceSuccess": "Resource removed: {{item}}",
+  "buttonNeed": "New need",
+  "buttonResource": "New resource"
 }

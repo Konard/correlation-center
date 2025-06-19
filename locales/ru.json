@@ -16,5 +16,7 @@
   "noResources": "У вас нет ресурсов.",
   "listResources": "Ваши ресурсы:\n{{list}}",
   "deleteResourceUsage": "Использование: /deleteresource <номер>",
-  "deleteResourceSuccess": "Ресурс удален: {{item}}"
+  "deleteResourceSuccess": "Ресурс удален: {{item}}",
+  "buttonNeed": "Новая потребность",
+  "buttonResource": "Новый ресурс"
 }

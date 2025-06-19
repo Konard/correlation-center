@@ -33,7 +33,7 @@ await storage.initDB();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
 const mainKeyboard = Markup.keyboard([
-  ['/need', '/resource']
+  [t(ctx, 'buttonNeed'), t(ctx, 'buttonResource')]
 ]).resize();
 
 bot.start(async (ctx) => {
@@ -49,6 +49,16 @@ bot.command('need', async (ctx) => {
 });
 
 bot.command('resource', async (ctx) => {
+  pendingActions[ctx.from.id] = 'resource';
+  await ctx.reply(t(ctx, 'promptResource'));
+});
+
+bot.hears([t({from: {language_code: 'en'}}, 'buttonNeed'), t({from: {language_code: 'ru'}}, 'buttonNeed')], async (ctx) => {
+  pendingActions[ctx.from.id] = 'need';
+  await ctx.reply(t(ctx, 'promptNeed'));
+});
+
+bot.hears([t({from: {language_code: 'en'}}, 'buttonResource'), t({from: {language_code: 'ru'}}, 'buttonResource')], async (ctx) => {
   pendingActions[ctx.from.id] = 'resource';
   await ctx.reply(t(ctx, 'promptResource'));
 });
