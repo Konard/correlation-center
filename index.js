@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import path from 'path';
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 import Storage from './storage.js';
 import { v7 as uuidv7 } from 'uuid';
 
@@ -31,27 +31,53 @@ await storage.initDB();
 
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
+const pendingActions = {};
+const mainKeyboard = Markup.keyboard([
+  ['/need', '/resource']
+]).resize();
 
 bot.start(async (ctx) => {
   await storage.readDB();
   storage.getUserData(ctx);
   await storage.writeDB();
-  await ctx.reply(t(ctx, 'welcome'));
+  await ctx.reply(t(ctx, 'welcome'), mainKeyboard);
 });
 
-bot.command('addneed', async (ctx) => {
+bot.command('need', async (ctx) => {
+  pendingActions[ctx.from.id] = 'need';
+  await ctx.reply(t(ctx, 'promptNeed'));
+});
+
+bot.command('resource', async (ctx) => {
+  pendingActions[ctx.from.id] = 'resource';
+  await ctx.reply(t(ctx, 'promptResource'));
+});
+
+bot.on('text', async (ctx, next) => {
+  const action = pendingActions[ctx.from.id];
+  if (!action) return next();
   await storage.readDB();
   const user = storage.getUserData(ctx);
-  const input = ctx.message.text.split(' ').slice(1).join(' ');
-  if (!input) return ctx.reply(t(ctx, 'addNeedUsage'));
-  const need = {
-    requestor: ctx.from.username || ctx.from.first_name || 'unknown',
-    guid: uuidv7(),
-    description: input
-  };
-  user.needs.push(need);
-  await storage.writeDB();
-  ctx.reply(t(ctx, 'addNeedSuccess', { item: input }));
+  if (action === 'need') {
+    const need = {
+      requestor: ctx.from.username || ctx.from.first_name || 'unknown',
+      guid: uuidv7(),
+      description: ctx.message.text
+    };
+    user.needs.push(need);
+    await storage.writeDB();
+    await ctx.reply(t(ctx, 'needAdded', { item: need.description }));
+  } else if (action === 'resource') {
+    const resource = {
+      supplier: ctx.from.username || ctx.from.first_name || 'unknown',
+      guid: uuidv7(),
+      description: ctx.message.text
+    };
+    user.resources.push(resource);
+    await storage.writeDB();
+    await ctx.reply(t(ctx, 'resourceAdded', { item: resource.description }));
+  }
+  delete pendingActions[ctx.from.id];
 });
 
 bot.command('listneeds', async (ctx) => {
@@ -73,21 +99,6 @@ bot.command('deleteneed', async (ctx) => {
   const removed = user.needs.splice(index - 1, 1)[0];
   await storage.writeDB();
   ctx.reply(t(ctx, 'deleteNeedSuccess', { item: removed.description }));
-});
-
-bot.command('addresource', async (ctx) => {
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  const input = ctx.message.text.split(' ').slice(1).join(' ');
-  if (!input) return ctx.reply(t(ctx, 'addResourceUsage'));
-  const resource = {
-    supplier: ctx.from.username || ctx.from.first_name || 'unknown',
-    guid: uuidv7(),
-    description: input
-  };
-  user.resources.push(resource);
-  await storage.writeDB();
-  ctx.reply(t(ctx, 'addResourceSuccess', { item: input }));
 });
 
 bot.command('listresources', async (ctx) => {
