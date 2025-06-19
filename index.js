@@ -81,7 +81,8 @@ bot.on('text', async (ctx, next) => {
     try {
       const post = await ctx.telegram.sendMessage(
         CHANNEL_USERNAME,
-        `New need from @${need.requestor}:\n${need.description}`
+        `${need.description}\n\n<b>Need ${need.guid} by @${need.requestor}.</b>`,
+        { parse_mode: 'HTML' }
       );
       need.channelMessageId = post.message_id;
     } catch (e) {
@@ -100,7 +101,8 @@ bot.on('text', async (ctx, next) => {
     try {
       const post = await ctx.telegram.sendMessage(
         CHANNEL_USERNAME,
-        `New resource from @${resource.supplier}:\n${resource.description}`
+        `${resource.description}\n\n<b>Resource ${resource.guid} by @${resource.supplier}.</b>`,
+        { parse_mode: 'HTML' }
       );
       resource.channelMessageId = post.message_id;
     } catch (e) {
