@@ -1,8 +1,8 @@
 {
   "welcome": "Welcome to Needs and Resources Bot!\nType /help to see all commands.\nUse the keyboard below for quick access.",
   "help": "Available commands:\n/start - Start the bot\n/help - Show this help message\n/need - Add a need\n/listneeds - List your needs\n/deleteneed <number> - Delete a need\n/resource - Add a resource\n/listresources - List your resources\n/deleteresource <number> - Delete a resource",
-  "promptNeed": "Please send the description of your need.",
-  "promptResource": "Please send the description of your resource.",
+  "promptNeed": "Please send the description of your need as your next message.",
+  "promptResource": "Please send the description of your resource as your next message.",
   "needAdded": "Need added: {{item}}",
   "resourceAdded": "Resource added: {{item}}",
   "addNeedUsage": "Usage: /addneed <need>",

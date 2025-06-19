@@ -32,15 +32,17 @@ await storage.initDB();
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
-const mainKeyboard = Markup.keyboard([
-  [t(ctx, 'buttonNeed'), t(ctx, 'buttonResource')]
-]).resize();
+function getMainKeyboard(ctx) {
+  return Markup.keyboard([
+    [t(ctx, 'buttonNeed'), t(ctx, 'buttonResource')]
+  ]).resize();
+}
 
 bot.start(async (ctx) => {
   await storage.readDB();
   storage.getUserData(ctx);
   await storage.writeDB();
-  await ctx.reply(t(ctx, 'welcome'), mainKeyboard);
+  await ctx.reply(t(ctx, 'welcome'), getMainKeyboard(ctx));
 });
 
 bot.command('need', async (ctx) => {
