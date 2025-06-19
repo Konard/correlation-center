@@ -18,5 +18,7 @@
   "deleteResourceUsage": "Использование: /deleteresource <номер>",
   "deleteResourceSuccess": "Ресурс удален: {{item}}",
   "buttonNeed": "Новая потребность",
-  "buttonResource": "Новый ресурс"
+  "buttonResource": "Новый ресурс",
+  "deleteNeedButton": "Удалить потребность",
+  "deleteResourceButton": "Удалить ресурс"
 }

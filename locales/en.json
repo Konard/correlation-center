@@ -18,5 +18,7 @@
   "deleteResourceUsage": "Usage: /deleteresource <number>",
   "deleteResourceSuccess": "Resource removed: {{item}}",
   "buttonNeed": "New need",
-  "buttonResource": "New resource"
+  "buttonResource": "New resource",
+  "deleteNeedButton": "Delete need",
+  "deleteResourceButton": "Delete resource"
 }

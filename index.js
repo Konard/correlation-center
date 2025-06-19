@@ -120,8 +120,15 @@ bot.command('needs', async (ctx) => {
   await storage.readDB();
   const user = storage.getUserData(ctx);
   if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
-  const list = user.needs.map((n, i) => `${i + 1}. ${n.description} (by ${n.requestor}, id: ${n.guid})`).join('\n');
-  ctx.reply(t(ctx, 'listNeeds', { list }));
+  for (let i = 0; i < user.needs.length; i++) {
+    const n = user.needs[i];
+    await ctx.reply(
+      `${n.description}\n(by @${n.requestor})`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback(t(ctx, 'deleteNeedButton') || 'Delete', `delete_need_${i}`)]
+      ])
+    );
+  }
 });
 
 bot.command('resources', async (ctx) => {
@@ -129,46 +136,51 @@ bot.command('resources', async (ctx) => {
   await storage.readDB();
   const user = storage.getUserData(ctx);
   if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
-  const list = user.resources.map((r, i) => `${i + 1}. ${r.description} (by ${r.supplier}, id: ${r.guid})`).join('\n');
-  ctx.reply(t(ctx, 'listResources', { list }));
+  for (let i = 0; i < user.resources.length; i++) {
+    const r = user.resources[i];
+    await ctx.reply(
+      `${r.description}\n(by @${r.supplier})`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback(t(ctx, 'deleteResourceButton') || 'Delete', `delete_resource_${i}`)]
+      ])
+    );
+  }
 });
 
-bot.command('deleteneed', async (ctx) => {
+bot.action(/delete_need_(\d+)/, async (ctx) => {
+  const index = parseInt(ctx.match[1], 10);
   await storage.readDB();
   const user = storage.getUserData(ctx);
-  const arg = ctx.message.text.split(' ')[1];
-  const index = parseInt(arg, 10);
-  if (!arg || isNaN(index) || index < 1 || index > user.needs.length) {
-    return ctx.reply(t(ctx, 'deleteNeedUsage'));
+  if (index >= 0 && index < user.needs.length) {
+    const removed = user.needs.splice(index, 1)[0];
+    if (removed.channelMessageId) {
+      try {
+        await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
+      } catch (e) {}
+    }
+    await storage.writeDB();
+    await ctx.editMessageText(`${removed.description}\n(by @${removed.requestor})\n${t(ctx, 'deleteNeedSuccess', { item: removed.description })}`);
+  } else {
+    await ctx.answerCbQuery('Not found');
   }
-  const removed = user.needs.splice(index - 1, 1)[0];
-  // Delete from channel if posted
-  if (removed.channelMessageId) {
-    try {
-      await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
-    } catch (e) {}
-  }
-  await storage.writeDB();
-  ctx.reply(t(ctx, 'deleteNeedSuccess', { item: removed.description }));
 });
 
-bot.command('deleteresource', async (ctx) => {
+bot.action(/delete_resource_(\d+)/, async (ctx) => {
+  const index = parseInt(ctx.match[1], 10);
   await storage.readDB();
   const user = storage.getUserData(ctx);
-  const arg = ctx.message.text.split(' ')[1];
-  const index = parseInt(arg, 10);
-  if (!arg || isNaN(index) || index < 1 || index > user.resources.length) {
-    return ctx.reply(t(ctx, 'deleteResourceUsage'));
+  if (index >= 0 && index < user.resources.length) {
+    const removed = user.resources.splice(index, 1)[0];
+    if (removed.channelMessageId) {
+      try {
+        await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
+      } catch (e) {}
+    }
+    await storage.writeDB();
+    await ctx.editMessageText(`${removed.description}\n(by @${removed.supplier})\n${t(ctx, 'deleteResourceSuccess', { item: removed.description })}`);
+  } else {
+    await ctx.answerCbQuery('Not found');
   }
-  const removed = user.resources.splice(index - 1, 1)[0];
-  // Delete from channel if posted
-  if (removed.channelMessageId) {
-    try {
-      await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
-    } catch (e) {}
-  }
-  await storage.writeDB();
-  ctx.reply(t(ctx, 'deleteResourceSuccess', { item: removed.description }));
 });
 
 bot.command('help', async (ctx) => {
