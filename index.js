@@ -32,6 +32,7 @@ await storage.initDB();
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
+const CHANNEL_USERNAME = '@CorrelationCenter';
 function getMainKeyboard(ctx) {
   return Markup.keyboard([
     [t(ctx, 'buttonNeed'), t(ctx, 'buttonResource')]
@@ -76,6 +77,16 @@ bot.on('text', async (ctx, next) => {
       guid: uuidv7(),
       description: ctx.message.text
     };
+    // Publish to channel
+    try {
+      const post = await ctx.telegram.sendMessage(
+        CHANNEL_USERNAME,
+        `New need from @${need.requestor}:\n${need.description}`
+      );
+      need.channelMessageId = post.message_id;
+    } catch (e) {
+      need.channelMessageId = null;
+    }
     user.needs.push(need);
     await storage.writeDB();
     await ctx.reply(t(ctx, 'needAdded', { item: need.description }));
@@ -85,6 +96,16 @@ bot.on('text', async (ctx, next) => {
       guid: uuidv7(),
       description: ctx.message.text
     };
+    // Publish to channel
+    try {
+      const post = await ctx.telegram.sendMessage(
+        CHANNEL_USERNAME,
+        `New resource from @${resource.supplier}:\n${resource.description}`
+      );
+      resource.channelMessageId = post.message_id;
+    } catch (e) {
+      resource.channelMessageId = null;
+    }
     user.resources.push(resource);
     await storage.writeDB();
     await ctx.reply(t(ctx, 'resourceAdded', { item: resource.description }));
@@ -109,6 +130,12 @@ bot.command('deleteneed', async (ctx) => {
     return ctx.reply(t(ctx, 'deleteNeedUsage'));
   }
   const removed = user.needs.splice(index - 1, 1)[0];
+  // Delete from channel if posted
+  if (removed.channelMessageId) {
+    try {
+      await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
+    } catch (e) {}
+  }
   await storage.writeDB();
   ctx.reply(t(ctx, 'deleteNeedSuccess', { item: removed.description }));
 });
@@ -130,6 +157,12 @@ bot.command('deleteresource', async (ctx) => {
     return ctx.reply(t(ctx, 'deleteResourceUsage'));
   }
   const removed = user.resources.splice(index - 1, 1)[0];
+  // Delete from channel if posted
+  if (removed.channelMessageId) {
+    try {
+      await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
+    } catch (e) {}
+  }
   await storage.writeDB();
   ctx.reply(t(ctx, 'deleteResourceSuccess', { item: removed.description }));
 });
