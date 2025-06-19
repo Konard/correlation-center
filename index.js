@@ -115,12 +115,22 @@ bot.on('text', async (ctx, next) => {
   delete pendingActions[ctx.from.id];
 });
 
-bot.command('listneeds', async (ctx) => {
+bot.command('needs', async (ctx) => {
+  if (ctx.chat.type !== 'private') return;
   await storage.readDB();
   const user = storage.getUserData(ctx);
   if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
   const list = user.needs.map((n, i) => `${i + 1}. ${n.description} (by ${n.requestor}, id: ${n.guid})`).join('\n');
   ctx.reply(t(ctx, 'listNeeds', { list }));
+});
+
+bot.command('resources', async (ctx) => {
+  if (ctx.chat.type !== 'private') return;
+  await storage.readDB();
+  const user = storage.getUserData(ctx);
+  if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
+  const list = user.resources.map((r, i) => `${i + 1}. ${r.description} (by ${r.supplier}, id: ${r.guid})`).join('\n');
+  ctx.reply(t(ctx, 'listResources', { list }));
 });
 
 bot.command('deleteneed', async (ctx) => {
@@ -140,14 +150,6 @@ bot.command('deleteneed', async (ctx) => {
   }
   await storage.writeDB();
   ctx.reply(t(ctx, 'deleteNeedSuccess', { item: removed.description }));
-});
-
-bot.command('listresources', async (ctx) => {
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
-  const list = user.resources.map((r, i) => `${i + 1}. ${r.description} (by ${r.supplier}, id: ${r.guid})`).join('\n');
-  ctx.reply(t(ctx, 'listResources', { list }));
 });
 
 bot.command('deleteresource', async (ctx) => {
