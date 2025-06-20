@@ -75,7 +75,8 @@ bot.on('text', async (ctx, next) => {
     const need = {
       requestor: ctx.from.username || ctx.from.first_name || 'unknown',
       guid: uuidv7(),
-      description: ctx.message.text
+      description: ctx.message.text,
+      createdAt: new Date().toISOString()
     };
     // Publish to channel
     try {
@@ -95,7 +96,8 @@ bot.on('text', async (ctx, next) => {
     const resource = {
       supplier: ctx.from.username || ctx.from.first_name || 'unknown',
       guid: uuidv7(),
-      description: ctx.message.text
+      description: ctx.message.text,
+      createdAt: new Date().toISOString()
     };
     // Publish to channel
     try {
@@ -122,8 +124,9 @@ bot.command('needs', async (ctx) => {
   if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
   for (let i = 0; i < user.needs.length; i++) {
     const n = user.needs[i];
+    const createdAt = n.createdAt ? new Date(n.createdAt).toLocaleString() : new Date().toLocaleString();
     await ctx.reply(
-      `${n.description}\n(by @${n.requestor})`,
+      `${n.description}\n\nCreated at ${createdAt}`,
       Markup.inlineKeyboard([
         [Markup.button.callback(t(ctx, 'deleteNeedButton') || 'Delete', `delete_need_${i}`)]
       ])
@@ -138,8 +141,9 @@ bot.command('resources', async (ctx) => {
   if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
   for (let i = 0; i < user.resources.length; i++) {
     const r = user.resources[i];
+    const createdAt = r.createdAt ? new Date(r.createdAt).toLocaleString() : new Date().toLocaleString();
     await ctx.reply(
-      `${r.description}\n(by @${r.supplier})`,
+      `${r.description}\n\nCreated at ${createdAt}`,
       Markup.inlineKeyboard([
         [Markup.button.callback(t(ctx, 'deleteResourceButton') || 'Delete', `delete_resource_${i}`)]
       ])
@@ -159,7 +163,9 @@ bot.action(/delete_need_(\d+)/, async (ctx) => {
       } catch (e) {}
     }
     await storage.writeDB();
-    await ctx.editMessageText(`${removed.description}\n(by @${removed.requestor})\n${t(ctx, 'deleteNeedSuccess', { item: removed.description })}`);
+    const createdAt = removed.createdAt ? new Date(removed.createdAt).toLocaleString() : new Date().toLocaleString();
+    const deletedAt = new Date().toLocaleString();
+    await ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
   } else {
     await ctx.answerCbQuery('Not found');
   }
@@ -177,7 +183,9 @@ bot.action(/delete_resource_(\d+)/, async (ctx) => {
       } catch (e) {}
     }
     await storage.writeDB();
-    await ctx.editMessageText(`${removed.description}\n(by @${removed.supplier})\n${t(ctx, 'deleteResourceSuccess', { item: removed.description })}`);
+    const createdAt = removed.createdAt ? new Date(removed.createdAt).toLocaleString() : new Date().toLocaleString();
+    const deletedAt = new Date().toLocaleString();
+    await ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
   } else {
     await ctx.answerCbQuery('Not found');
   }
