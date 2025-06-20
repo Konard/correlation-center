@@ -1,5 +1,8 @@
 # correlation-center
+
 t.me/CorrelationCenterBot Telegram bot.
+
+The Correlation Center is a system inspired by Jacque Fresco ideas.
 
 ## Setup
 
