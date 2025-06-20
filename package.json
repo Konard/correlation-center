@@ -2,7 +2,7 @@
   "name": "needs-and-resources-bot",
   "version": "1.0.0",
   "type": "module",
-  "description": "Telegram bot to manage needs and resources",
+  "description": "Telegram bot to manage needs and resources (Correlation Center)",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

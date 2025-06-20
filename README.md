@@ -1,5 +1,5 @@
 # needs-and-resources
-t.me/NeedsAndResourcesBot Telegram bot.
+t.me/CorrelationCenterBot Telegram bot.
 
 ## Setup
 
