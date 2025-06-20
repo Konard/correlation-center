@@ -43,7 +43,7 @@ bot.start(async (ctx) => {
   await storage.readDB();
   storage.getUserData(ctx);
   await storage.writeDB();
-  await ctx.reply(t(ctx, 'welcome'), getMainKeyboard(ctx));
+  await ctx.reply(t(ctx, 'welcome', { description: t(ctx, 'description') }), getMainKeyboard(ctx));
 });
 
 bot.command('need', async (ctx) => {
