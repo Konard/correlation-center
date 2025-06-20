@@ -1,4 +1,4 @@
-# needs-and-resources
+# correlation-center
 t.me/CorrelationCenterBot Telegram bot.
 
 ## Setup
