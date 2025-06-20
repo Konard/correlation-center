@@ -69,13 +69,18 @@ bot.hears([t({from: {language_code: 'en'}}, 'buttonResource'), t({from: {languag
 bot.on('text', async (ctx, next) => {
   const action = pendingActions[ctx.from.id];
   if (!action) return next();
+  const text = ctx.message.text.trim();
+  if (text.startsWith('/')) {
+    await ctx.reply(t(ctx, action === 'need' ? 'promptNeed' : 'promptResource'));
+    return;
+  }
   await storage.readDB();
   const user = storage.getUserData(ctx);
   if (action === 'need') {
     const need = {
       requestor: ctx.from.username || ctx.from.first_name || 'unknown',
       guid: uuidv7(),
-      description: ctx.message.text,
+      description: text,
       createdAt: new Date().toISOString()
     };
     // Publish to channel
@@ -96,7 +101,7 @@ bot.on('text', async (ctx, next) => {
     const resource = {
       supplier: ctx.from.username || ctx.from.first_name || 'unknown',
       guid: uuidv7(),
-      description: ctx.message.text,
+      description: text,
       createdAt: new Date().toISOString()
     };
     // Publish to channel
