@@ -46,7 +46,7 @@ async function listItems(ctx, type) {
   }
   for (let i = 0; i < user[plural].length; i++) {
     const item = user[plural][i];
-    const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : new Date().toLocaleString();
+    const createdAt = formatDate(item.createdAt);
     await ctx.reply(
       `${item.description}\n\nCreated at ${createdAt}`,
       Markup.inlineKeyboard([
@@ -102,6 +102,10 @@ async function addItem(ctx, type) {
   await ctx.reply(t(ctx, addedKey, { item: item.description }));
   delete pendingActions[ctx.from.id];
 }
+// Helper to format timestamps consistently
+function formatDate(ts) {
+  return new Date(ts || Date.now()).toLocaleString();
+}
 // Consolidated handlers for prompt, listing, and deletion of needs and resources
 const itemTypes = ['need', 'resource'];
 itemTypes.forEach((type) => {
@@ -150,8 +154,8 @@ itemTypes.forEach((type) => {
         } catch (e) {}
       }
       await storage.writeDB();
-      const createdAt = removed.createdAt ? new Date(removed.createdAt).toLocaleString() : new Date().toLocaleString();
-      const deletedAt = new Date().toLocaleString();
+      const createdAt = formatDate(removed.createdAt);
+      const deletedAt = formatDate();
       await ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
     } else {
       await ctx.answerCbQuery('Not found');
@@ -159,10 +163,15 @@ itemTypes.forEach((type) => {
   });
 });
 function getMainKeyboard(ctx) {
-  return Markup.keyboard([
-    [t(ctx, 'buttonNeed'), t(ctx, 'buttonResource')],
-    [t(ctx, 'buttonMyNeeds'), t(ctx, 'buttonMyResources')]
-  ]).resize();
+  // Build keyboard rows from itemTypes
+  const newRow = itemTypes.map(type =>
+    t(ctx, `button${type.charAt(0).toUpperCase() + type.slice(1)}`)
+  );
+  const myRow = itemTypes.map(type => {
+    const plural = `${type}s`;
+    return t(ctx, `buttonMy${plural.charAt(0).toUpperCase() + plural.slice(1)}`);
+  });
+  return Markup.keyboard([newRow, myRow]).resize();
 }
 
 bot.start(async (ctx) => {
@@ -170,40 +179,6 @@ bot.start(async (ctx) => {
   storage.getUserData(ctx);
   await storage.writeDB();
   await ctx.reply(t(ctx, 'welcome', { description: t(ctx, 'description') }), getMainKeyboard(ctx));
-});
-
-bot.command('needs', async (ctx) => {
-  if (ctx.chat.type !== 'private') return;
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
-  for (let i = 0; i < user.needs.length; i++) {
-    const n = user.needs[i];
-    const createdAt = n.createdAt ? new Date(n.createdAt).toLocaleString() : new Date().toLocaleString();
-    await ctx.reply(
-      `${n.description}\n\nCreated at ${createdAt}`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback(t(ctx, 'deleteNeedButton') || 'Delete', `delete_need_${i}`)]
-      ])
-    );
-  }
-});
-
-bot.command('resources', async (ctx) => {
-  if (ctx.chat.type !== 'private') return;
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
-  for (let i = 0; i < user.resources.length; i++) {
-    const r = user.resources[i];
-    const createdAt = r.createdAt ? new Date(r.createdAt).toLocaleString() : new Date().toLocaleString();
-    await ctx.reply(
-      `${r.description}\n\nCreated at ${createdAt}`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback(t(ctx, 'deleteResourceButton') || 'Delete', `delete_resource_${i}`)]
-      ])
-    );
-  }
 });
 
 bot.on('text', async (ctx, next) => {
