@@ -55,7 +55,53 @@ async function listItems(ctx, type) {
     );
   }
 }
-
+// Helper to add a new item (need or resource)
+async function addItem(ctx, type) {
+  const text = ctx.message.text.trim();
+  const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
+  const promptKey = `prompt${capitalized}`;
+  if (text.startsWith('/')) {
+    await ctx.reply(t(ctx, promptKey));
+    return;
+  }
+  await storage.readDB();
+  const user = storage.getUserData(ctx);
+  const config = {
+    need: {
+      field: 'needs',
+      role: 'requestor',
+      addedKey: 'needAdded',
+      channelTemplate: (desc, name) => `${desc}\n\n<i>Need of @${name}.</i>`
+    },
+    resource: {
+      field: 'resources',
+      role: 'supplier',
+      addedKey: 'resourceAdded',
+      channelTemplate: (desc, name) => `${desc}\n\n<i>Resource provided by @${name}.</i>`
+    }
+  };
+  const { field, role, addedKey, channelTemplate } = config[type];
+  const item = {
+    [role]: ctx.from.username || ctx.from.first_name || 'unknown',
+    guid: uuidv7(),
+    description: text,
+    createdAt: new Date().toISOString()
+  };
+  try {
+    const post = await ctx.telegram.sendMessage(
+      CHANNEL_USERNAME,
+      channelTemplate(item.description, item[role]),
+      { parse_mode: 'HTML' }
+    );
+    item.channelMessageId = post.message_id;
+  } catch (e) {
+    item.channelMessageId = null;
+  }
+  user[field].push(item);
+  await storage.writeDB();
+  await ctx.reply(t(ctx, addedKey, { item: item.description }));
+  delete pendingActions[ctx.from.id];
+}
 // Consolidated handlers for prompt, listing, and deletion of needs and resources
 const itemTypes = ['need', 'resource'];
 itemTypes.forEach((type) => {
@@ -163,57 +209,7 @@ bot.command('resources', async (ctx) => {
 bot.on('text', async (ctx, next) => {
   const action = pendingActions[ctx.from.id];
   if (!action) return next();
-  const text = ctx.message.text.trim();
-  if (text.startsWith('/')) {
-    await ctx.reply(t(ctx, action === 'need' ? 'promptNeed' : 'promptResource'));
-    return;
-  }
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  if (action === 'need') {
-    const need = {
-      requestor: ctx.from.username || ctx.from.first_name || 'unknown',
-      guid: uuidv7(),
-      description: text,
-      createdAt: new Date().toISOString()
-    };
-    // Publish to channel
-    try {
-      const post = await ctx.telegram.sendMessage(
-        CHANNEL_USERNAME,
-        `${need.description}\n\n<i>Need of @${need.requestor}.</i>`,
-        { parse_mode: 'HTML' }
-      );
-      need.channelMessageId = post.message_id;
-    } catch (e) {
-      need.channelMessageId = null;
-    }
-    user.needs.push(need);
-    await storage.writeDB();
-    await ctx.reply(t(ctx, 'needAdded', { item: need.description }));
-  } else if (action === 'resource') {
-    const resource = {
-      supplier: ctx.from.username || ctx.from.first_name || 'unknown',
-      guid: uuidv7(),
-      description: text,
-      createdAt: new Date().toISOString()
-    };
-    // Publish to channel
-    try {
-      const post = await ctx.telegram.sendMessage(
-        CHANNEL_USERNAME,
-        `${resource.description}\n\n<i>Resource provided by @${resource.supplier}.</i>`,
-        { parse_mode: 'HTML' }
-      );
-      resource.channelMessageId = post.message_id;
-    } catch (e) {
-      resource.channelMessageId = null;
-    }
-    user.resources.push(resource);
-    await storage.writeDB();
-    await ctx.reply(t(ctx, 'resourceAdded', { item: resource.description }));
-  }
-  delete pendingActions[ctx.from.id];
+  await addItem(ctx, action);
 });
 
 bot.command('help', async (ctx) => {
