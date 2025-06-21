@@ -33,6 +33,88 @@ await storage.initDB();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
 const CHANNEL_USERNAME = '@CorrelationCenter';
+// Consolidated handlers for prompt, listing, and deletion of needs and resources
+const itemTypes = ['need', 'resource'];
+itemTypes.forEach((type) => {
+  const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
+  const plural = `${type}s`;
+  const capitalizedPlural = plural.charAt(0).toUpperCase() + plural.slice(1);
+  const buttonKey = `button${capitalized}`;
+  const promptKey = `prompt${capitalized}`;
+  const deleteButtonKey = `delete${capitalized}Button`;
+
+  // Prompt handlers (/need and keyboard)
+  bot.command(type, async (ctx) => {
+    pendingActions[ctx.from.id] = type;
+    await ctx.reply(t(ctx, promptKey));
+  });
+  bot.hears(
+    [t({ from: { language_code: 'en' } }, buttonKey), t({ from: { language_code: 'ru' } }, buttonKey)],
+    async (ctx) => {
+      pendingActions[ctx.from.id] = type;
+      await ctx.reply(t(ctx, promptKey));
+    }
+  );
+
+  // Listing handlers (/needs and 'My needs' button)
+  bot.command(plural, async (ctx) => {
+    if (ctx.chat.type !== 'private') return;
+    await storage.readDB();
+    const user = storage.getUserData(ctx);
+    if (user[plural].length === 0) return ctx.reply(t(ctx, `no${capitalizedPlural}`));
+    for (let i = 0; i < user[plural].length; i++) {
+      const item = user[plural][i];
+      const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : new Date().toLocaleString();
+      await ctx.reply(
+        `${item.description}\n\nCreated at ${createdAt}`,
+        Markup.inlineKeyboard([
+          [Markup.button.callback(t(ctx, deleteButtonKey) || 'Delete', `delete_${type}_${i}`)]
+        ])
+      );
+    }
+  });
+  bot.hears(
+    [t({ from: { language_code: 'en' } }, `buttonMy${capitalizedPlural}`), t({ from: { language_code: 'ru' } }, `buttonMy${capitalizedPlural}`)],
+    async (ctx) => {
+      if (ctx.chat.type !== 'private') return;
+      await storage.readDB();
+      const user = storage.getUserData(ctx);
+      if (user[plural].length === 0) return ctx.reply(t(ctx, `no${capitalizedPlural}`));
+      for (let i = 0; i < user[plural].length; i++) {
+        const item = user[plural][i];
+        const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : new Date().toLocaleString();
+        await ctx.reply(
+          `${item.description}\n\nCreated at ${createdAt}`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback(t(ctx, deleteButtonKey) || 'Delete', `delete_${type}_${i}`)]
+          ])
+        );
+      }
+    }
+  );
+
+  // Deletion handlers
+  bot.action(new RegExp(`delete_${type}_(\\d+)`), async (ctx) => {
+    const index = parseInt(ctx.match[1], 10);
+    await storage.readDB();
+    const user = storage.getUserData(ctx);
+    const collection = user[plural];
+    if (index >= 0 && index < collection.length) {
+      const removed = collection.splice(index, 1)[0];
+      if (removed.channelMessageId) {
+        try {
+          await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
+        } catch (e) {}
+      }
+      await storage.writeDB();
+      const createdAt = removed.createdAt ? new Date(removed.createdAt).toLocaleString() : new Date().toLocaleString();
+      const deletedAt = new Date().toLocaleString();
+      await ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
+    } else {
+      await ctx.answerCbQuery('Not found');
+    }
+  });
+});
 function getMainKeyboard(ctx) {
   return Markup.keyboard([
     [t(ctx, 'buttonNeed'), t(ctx, 'buttonResource')],
@@ -47,30 +129,7 @@ bot.start(async (ctx) => {
   await ctx.reply(t(ctx, 'welcome', { description: t(ctx, 'description') }), getMainKeyboard(ctx));
 });
 
-bot.command('need', async (ctx) => {
-  pendingActions[ctx.from.id] = 'need';
-  await ctx.reply(t(ctx, 'promptNeed'));
-});
-
-bot.command('resource', async (ctx) => {
-  pendingActions[ctx.from.id] = 'resource';
-  await ctx.reply(t(ctx, 'promptResource'));
-});
-
-bot.hears([t({from: {language_code: 'en'}}, 'buttonNeed'), t({from: {language_code: 'ru'}}, 'buttonNeed')], async (ctx) => {
-  pendingActions[ctx.from.id] = 'need';
-  await ctx.reply(t(ctx, 'promptNeed'));
-});
-
-bot.hears([t({from: {language_code: 'en'}}, 'buttonResource'), t({from: {language_code: 'ru'}}, 'buttonResource')], async (ctx) => {
-  pendingActions[ctx.from.id] = 'resource';
-  await ctx.reply(t(ctx, 'promptResource'));
-});
-
-bot.hears([
-  t({from: {language_code: 'en'}}, 'buttonMyNeeds'),
-  t({from: {language_code: 'ru'}}, 'buttonMyNeeds')
-], async (ctx) => {
+bot.command('needs', async (ctx) => {
   if (ctx.chat.type !== 'private') return;
   await storage.readDB();
   const user = storage.getUserData(ctx);
@@ -87,10 +146,7 @@ bot.hears([
   }
 });
 
-bot.hears([
-  t({from: {language_code: 'en'}}, 'buttonMyResources'),
-  t({from: {language_code: 'ru'}}, 'buttonMyResources')
-], async (ctx) => {
+bot.command('resources', async (ctx) => {
   if (ctx.chat.type !== 'private') return;
   await storage.readDB();
   const user = storage.getUserData(ctx);
@@ -161,80 +217,6 @@ bot.on('text', async (ctx, next) => {
     await ctx.reply(t(ctx, 'resourceAdded', { item: resource.description }));
   }
   delete pendingActions[ctx.from.id];
-});
-
-bot.command('needs', async (ctx) => {
-  if (ctx.chat.type !== 'private') return;
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
-  for (let i = 0; i < user.needs.length; i++) {
-    const n = user.needs[i];
-    const createdAt = n.createdAt ? new Date(n.createdAt).toLocaleString() : new Date().toLocaleString();
-    await ctx.reply(
-      `${n.description}\n\nCreated at ${createdAt}`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback(t(ctx, 'deleteNeedButton') || 'Delete', `delete_need_${i}`)]
-      ])
-    );
-  }
-});
-
-bot.command('resources', async (ctx) => {
-  if (ctx.chat.type !== 'private') return;
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
-  for (let i = 0; i < user.resources.length; i++) {
-    const r = user.resources[i];
-    const createdAt = r.createdAt ? new Date(r.createdAt).toLocaleString() : new Date().toLocaleString();
-    await ctx.reply(
-      `${r.description}\n\nCreated at ${createdAt}`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback(t(ctx, 'deleteResourceButton') || 'Delete', `delete_resource_${i}`)]
-      ])
-    );
-  }
-});
-
-bot.action(/delete_need_(\d+)/, async (ctx) => {
-  const index = parseInt(ctx.match[1], 10);
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  if (index >= 0 && index < user.needs.length) {
-    const removed = user.needs.splice(index, 1)[0];
-    if (removed.channelMessageId) {
-      try {
-        await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
-      } catch (e) {}
-    }
-    await storage.writeDB();
-    const createdAt = removed.createdAt ? new Date(removed.createdAt).toLocaleString() : new Date().toLocaleString();
-    const deletedAt = new Date().toLocaleString();
-    await ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
-  } else {
-    await ctx.answerCbQuery('Not found');
-  }
-});
-
-bot.action(/delete_resource_(\d+)/, async (ctx) => {
-  const index = parseInt(ctx.match[1], 10);
-  await storage.readDB();
-  const user = storage.getUserData(ctx);
-  if (index >= 0 && index < user.resources.length) {
-    const removed = user.resources.splice(index, 1)[0];
-    if (removed.channelMessageId) {
-      try {
-        await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
-      } catch (e) {}
-    }
-    await storage.writeDB();
-    const createdAt = removed.createdAt ? new Date(removed.createdAt).toLocaleString() : new Date().toLocaleString();
-    const deletedAt = new Date().toLocaleString();
-    await ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
-  } else {
-    await ctx.answerCbQuery('Not found');
-  }
 });
 
 bot.command('help', async (ctx) => {
