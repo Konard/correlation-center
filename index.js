@@ -33,6 +33,29 @@ await storage.initDB();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
 const CHANNEL_USERNAME = '@CorrelationCenter';
+// Helper to list items for both needs and resources
+async function listItems(ctx, type) {
+  if (ctx.chat.type !== 'private') return;
+  await storage.readDB();
+  const user = storage.getUserData(ctx);
+  const plural = `${type}s`;
+  const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
+  const capitalizedPlural = plural.charAt(0).toUpperCase() + plural.slice(1);
+  if (user[plural].length === 0) {
+    return ctx.reply(t(ctx, `no${capitalizedPlural}`));
+  }
+  for (let i = 0; i < user[plural].length; i++) {
+    const item = user[plural][i];
+    const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : new Date().toLocaleString();
+    await ctx.reply(
+      `${item.description}\n\nCreated at ${createdAt}`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback(t(ctx, `delete${capitalized}Button`) || 'Delete', `delete_${type}_${i}`)]
+      ])
+    );
+  }
+}
+
 // Consolidated handlers for prompt, listing, and deletion of needs and resources
 const itemTypes = ['need', 'resource'];
 itemTypes.forEach((type) => {
@@ -56,42 +79,16 @@ itemTypes.forEach((type) => {
     }
   );
 
-  // Listing handlers (/needs and 'My needs' button)
+  // Listing handlers using the generic helper
   bot.command(plural, async (ctx) => {
-    if (ctx.chat.type !== 'private') return;
-    await storage.readDB();
-    const user = storage.getUserData(ctx);
-    if (user[plural].length === 0) return ctx.reply(t(ctx, `no${capitalizedPlural}`));
-    for (let i = 0; i < user[plural].length; i++) {
-      const item = user[plural][i];
-      const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : new Date().toLocaleString();
-      await ctx.reply(
-        `${item.description}\n\nCreated at ${createdAt}`,
-        Markup.inlineKeyboard([
-          [Markup.button.callback(t(ctx, deleteButtonKey) || 'Delete', `delete_${type}_${i}`)]
-        ])
-      );
-    }
+    await listItems(ctx, type);
   });
-  bot.hears(
-    [t({ from: { language_code: 'en' } }, `buttonMy${capitalizedPlural}`), t({ from: { language_code: 'ru' } }, `buttonMy${capitalizedPlural}`)],
-    async (ctx) => {
-      if (ctx.chat.type !== 'private') return;
-      await storage.readDB();
-      const user = storage.getUserData(ctx);
-      if (user[plural].length === 0) return ctx.reply(t(ctx, `no${capitalizedPlural}`));
-      for (let i = 0; i < user[plural].length; i++) {
-        const item = user[plural][i];
-        const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleString() : new Date().toLocaleString();
-        await ctx.reply(
-          `${item.description}\n\nCreated at ${createdAt}`,
-          Markup.inlineKeyboard([
-            [Markup.button.callback(t(ctx, deleteButtonKey) || 'Delete', `delete_${type}_${i}`)]
-          ])
-        );
-      }
-    }
-  );
+  bot.hears([
+    t({ from: { language_code: 'en' } }, `buttonMy${capitalizedPlural}`),
+    t({ from: { language_code: 'ru' } }, `buttonMy${capitalizedPlural}`)
+  ], async (ctx) => {
+    await listItems(ctx, type);
+  });
 
   // Deletion handlers
   bot.action(new RegExp(`delete_${type}_(\\d+)`), async (ctx) => {
