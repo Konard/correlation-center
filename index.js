@@ -47,11 +47,24 @@ async function listItems(ctx, type) {
   for (let i = 0; i < user[plural].length; i++) {
     const item = user[plural][i];
     const createdAt = formatDate(item.createdAt);
+    // Build delete (and optional bump) buttons
+    const buttons = [
+      Markup.button.callback(t(ctx, `delete${capitalized}Button`) || 'Delete', `delete_${type}_${i}`)
+    ];
+    const created = new Date(item.createdAt);
+    const now = new Date();
+    if (
+      created.getFullYear() !== now.getFullYear() ||
+      created.getMonth() !== now.getMonth() ||
+      created.getDate() !== now.getDate()
+    ) {
+      buttons.push(
+        Markup.button.callback(t(ctx, 'bumpButton') || 'Bump', `bump_${type}_${i}`)
+      );
+    }
     await ctx.reply(
       `${item.description}\n\nCreated at ${createdAt}`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback(t(ctx, `delete${capitalized}Button`) || 'Delete', `delete_${type}_${i}`)]
-      ])
+      Markup.inlineKeyboard([buttons])
     );
   }
 }
@@ -188,6 +201,44 @@ itemTypes.forEach((type) => {
     } else {
       await ctx.answerCbQuery('Not found');
     }
+  });
+});
+// Bump handlers to refresh old messages in the channel
+itemTypes.forEach((type) => {
+  const plural = `${type}s`;
+  bot.action(new RegExp(`bump_${type}_(\\d+)`), async (ctx) => {
+    const index = parseInt(ctx.match[1], 10);
+    await storage.readDB();
+    const user = storage.getUserData(ctx);
+    const items = user[plural];
+    if (index < 0 || index >= items.length) return ctx.answerCbQuery('Not found');
+    const item = items[index];
+    // Remove old channel message
+    if (item.channelMessageId) {
+      try { await ctx.telegram.deleteMessage(CHANNEL_USERNAME, item.channelMessageId); } catch (e) {}
+    }
+    // Re-post to channel
+    let post;
+    const role = type === 'need' ? 'requestor' : 'supplier';
+    const channelTemplate = type === 'need'
+      ? (desc, name) => `${desc}\n\n<i>Need of @${name}.</i>`
+      : (desc, name) => `${desc}\n\n<i>Resource provided by @${name}.</i>`;
+    if (item.fileId) {
+      post = await ctx.telegram.sendPhoto(
+        CHANNEL_USERNAME,
+        item.fileId,
+        { caption: channelTemplate(item.description, item[role]), parse_mode: 'HTML' }
+      );
+    } else {
+      post = await ctx.telegram.sendMessage(
+        CHANNEL_USERNAME,
+        channelTemplate(item.description, item[role]),
+        { parse_mode: 'HTML' }
+      );
+    }
+    item.channelMessageId = post.message_id;
+    await storage.writeDB();
+    await ctx.answerCbQuery(t(ctx, 'bumped'));
   });
 });
 function getMainKeyboard(ctx) {

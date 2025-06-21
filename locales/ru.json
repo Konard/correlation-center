@@ -12,6 +12,8 @@
   "buttonResource": "Новый ресурс",
   "deleteNeedButton": "Удалить потребность",
   "deleteResourceButton": "Удалить ресурс",
+  "bumpButton": "Поднять",
+  "bumped": "Поднято!",
   "buttonMyNeeds": "Мои потребности",
   "buttonMyResources": "Мои ресурсы"
 }
