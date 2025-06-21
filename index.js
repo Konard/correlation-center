@@ -47,23 +47,27 @@ async function listItems(ctx, type) {
   for (let i = 0; i < user[plural].length; i++) {
     const item = user[plural][i];
     const createdAt = formatDate(item.createdAt);
+    const updatedAt = formatDate(item.updatedAt);
     // Build delete (and optional bump) buttons
     const buttons = [
       Markup.button.callback(t(ctx, `delete${capitalized}Button`) || 'Delete', `delete_${type}_${i}`)
     ];
-    const created = new Date(item.createdAt);
+    const last = new Date(item.updatedAt || item.createdAt);
     const now = new Date();
-    if (
-      created.getFullYear() !== now.getFullYear() ||
-      created.getMonth() !== now.getMonth() ||
-      created.getDate() !== now.getDate()
-    ) {
+    const ageMs = now.getTime() - last.getTime();
+    // Show bump only if item is older than 24 hours
+    if (ageMs >= 24 * 60 * 60 * 1000) {
       buttons.push(
         Markup.button.callback(t(ctx, 'bumpButton') || 'Bump', `bump_${type}_${i}`)
       );
     }
+    // Include Updated at if item has been bumped
+    let message = `${item.description}\n\nCreated at ${createdAt}`;
+    if (item.updatedAt && item.updatedAt !== item.createdAt) {
+      message += `\nUpdated at ${updatedAt}`;
+    }
     await ctx.reply(
-      `${item.description}\n\nCreated at ${createdAt}`,
+      message,
       Markup.inlineKeyboard([buttons])
     );
   }
@@ -112,11 +116,13 @@ async function addItem(ctx, type) {
     }
   };
   const { field, role, addedKey, channelTemplate } = config[type];
+  const timestamp = new Date().toISOString();
   const item = {
     [role]: ctx.from.username || ctx.from.first_name || 'unknown',
     guid: uuidv7(),
     description,
-    createdAt: new Date().toISOString()
+    createdAt: timestamp,
+    updatedAt: timestamp
   };
   if (fileId) item.fileId = fileId;
   try {
@@ -237,7 +243,20 @@ itemTypes.forEach((type) => {
       );
     }
     item.channelMessageId = post.message_id;
+    // Update updatedAt after bump
+    item.updatedAt = new Date().toISOString();
     await storage.writeDB();
+    // Update the private chat message: show Updated at and remove Bump button
+    const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
+    const deleteButtonKey = `delete${capitalized}Button`;
+    const createdAtStr = formatDate(item.createdAt);
+    const updatedAtStr = formatDate();
+    await ctx.editMessageText(
+      `${item.description}\n\nCreated at ${createdAtStr}\nUpdated at ${updatedAtStr}`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback(t(ctx, deleteButtonKey), `delete_${type}_${index}`)]
+      ])
+    );
     await ctx.answerCbQuery(t(ctx, 'bumped'));
   });
 });
