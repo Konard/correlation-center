@@ -35,7 +35,8 @@ const pendingActions = {};
 const CHANNEL_USERNAME = '@CorrelationCenter';
 function getMainKeyboard(ctx) {
   return Markup.keyboard([
-    [t(ctx, 'buttonNeed'), t(ctx, 'buttonResource')]
+    [t(ctx, 'buttonNeed'), t(ctx, 'buttonResource')],
+    [t(ctx, 'buttonMyNeeds'), t(ctx, 'buttonMyResources')]
   ]).resize();
 }
 
@@ -64,6 +65,46 @@ bot.hears([t({from: {language_code: 'en'}}, 'buttonNeed'), t({from: {language_co
 bot.hears([t({from: {language_code: 'en'}}, 'buttonResource'), t({from: {language_code: 'ru'}}, 'buttonResource')], async (ctx) => {
   pendingActions[ctx.from.id] = 'resource';
   await ctx.reply(t(ctx, 'promptResource'));
+});
+
+bot.hears([
+  t({from: {language_code: 'en'}}, 'buttonMyNeeds'),
+  t({from: {language_code: 'ru'}}, 'buttonMyNeeds')
+], async (ctx) => {
+  if (ctx.chat.type !== 'private') return;
+  await storage.readDB();
+  const user = storage.getUserData(ctx);
+  if (user.needs.length === 0) return ctx.reply(t(ctx, 'noNeeds'));
+  for (let i = 0; i < user.needs.length; i++) {
+    const n = user.needs[i];
+    const createdAt = n.createdAt ? new Date(n.createdAt).toLocaleString() : new Date().toLocaleString();
+    await ctx.reply(
+      `${n.description}\n\nCreated at ${createdAt}`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback(t(ctx, 'deleteNeedButton') || 'Delete', `delete_need_${i}`)]
+      ])
+    );
+  }
+});
+
+bot.hears([
+  t({from: {language_code: 'en'}}, 'buttonMyResources'),
+  t({from: {language_code: 'ru'}}, 'buttonMyResources')
+], async (ctx) => {
+  if (ctx.chat.type !== 'private') return;
+  await storage.readDB();
+  const user = storage.getUserData(ctx);
+  if (user.resources.length === 0) return ctx.reply(t(ctx, 'noResources'));
+  for (let i = 0; i < user.resources.length; i++) {
+    const r = user.resources[i];
+    const createdAt = r.createdAt ? new Date(r.createdAt).toLocaleString() : new Date().toLocaleString();
+    await ctx.reply(
+      `${r.description}\n\nCreated at ${createdAt}`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback(t(ctx, 'deleteResourceButton') || 'Delete', `delete_resource_${i}`)]
+      ])
+    );
+  }
 });
 
 bot.on('text', async (ctx, next) => {

@@ -11,5 +11,7 @@
   "buttonNeed": "Новая потребность",
   "buttonResource": "Новый ресурс",
   "deleteNeedButton": "Удалить потребность",
-  "deleteResourceButton": "Удалить ресурс"
+  "deleteResourceButton": "Удалить ресурс",
+  "buttonMyNeeds": "Мои потребности",
+  "buttonMyResources": "Мои ресурсы"
 }

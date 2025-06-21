@@ -11,5 +11,7 @@
   "buttonNeed": "New need",
   "buttonResource": "New resource",
   "deleteNeedButton": "Delete need",
-  "deleteResourceButton": "Delete resource"
+  "deleteResourceButton": "Delete resource",
+  "buttonMyNeeds": "My needs",
+  "buttonMyResources": "My resources"
 }
