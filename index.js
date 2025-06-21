@@ -57,10 +57,23 @@ async function listItems(ctx, type) {
 }
 // Helper to add a new item (need or resource)
 async function addItem(ctx, type) {
-  const text = ctx.message.text.trim();
+  // Support both text and image inputs
+  const hasPhoto = ctx.message.photo && ctx.message.photo.length > 0;
+  const hasDocImage = ctx.message.document && ctx.message.document.mime_type.startsWith('image/');
+  let description = '';
+  let fileId = null;
+  if (hasPhoto) {
+    fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+    description = ctx.message.caption?.trim() || '';
+  } else if (hasDocImage) {
+    fileId = ctx.message.document.file_id;
+    description = ctx.message.caption?.trim() || '';
+  } else if (ctx.message.text) {
+    description = ctx.message.text.trim();
+  }
   const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
   const promptKey = `prompt${capitalized}`;
-  if (text.startsWith('/')) {
+  if (!description && !fileId) {
     await ctx.reply(t(ctx, promptKey));
     return;
   }
@@ -84,22 +97,32 @@ async function addItem(ctx, type) {
   const item = {
     [role]: ctx.from.username || ctx.from.first_name || 'unknown',
     guid: uuidv7(),
-    description: text,
+    description,
     createdAt: new Date().toISOString()
   };
+  if (fileId) item.fileId = fileId;
   try {
-    const post = await ctx.telegram.sendMessage(
-      CHANNEL_USERNAME,
-      channelTemplate(item.description, item[role]),
-      { parse_mode: 'HTML' }
-    );
+    let post;
+    if (fileId) {
+      post = await ctx.telegram.sendPhoto(
+        CHANNEL_USERNAME,
+        fileId,
+        { caption: channelTemplate(item.description, item[role]), parse_mode: 'HTML' }
+      );
+    } else {
+      post = await ctx.telegram.sendMessage(
+        CHANNEL_USERNAME,
+        channelTemplate(item.description, item[role]),
+        { parse_mode: 'HTML' }
+      );
+    }
     item.channelMessageId = post.message_id;
   } catch (e) {
     item.channelMessageId = null;
   }
   user[field].push(item);
   await storage.writeDB();
-  await ctx.reply(t(ctx, addedKey, { item: item.description }));
+  await ctx.reply(t(ctx, addedKey, { channel: CHANNEL_USERNAME }));
   delete pendingActions[ctx.from.id];
 }
 // Helper to format timestamps consistently
@@ -181,7 +204,8 @@ bot.start(async (ctx) => {
   await ctx.reply(t(ctx, 'welcome', { description: t(ctx, 'description') }), getMainKeyboard(ctx));
 });
 
-bot.on('text', async (ctx, next) => {
+// Handle all incoming messages (text or images) for adding items
+bot.on('message', async (ctx, next) => {
   const action = pendingActions[ctx.from.id];
   if (!action) return next();
   await addItem(ctx, action);
