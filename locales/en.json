@@ -4,8 +4,8 @@
   "help": "Available commands:\n/start - Start the bot\n/help - Show this help message\n/need - Add a need\n/needs - List your needs (private only)\n/resource - Add a resource\n/resources - List your resources (private only)",
   "promptNeed": "Please send the description of your need as your next message.",
   "promptResource": "Please send the description of your resource as your next message.",
-  "needAdded": "Your need was published at {{channel}}.",
-  "resourceAdded": "Your resource was published at {{channel}}.",
+  "needAdded": "Your need was published at {{channel}}. You can manage your needs in private messages of @CorrelationCenterBot.",
+  "resourceAdded": "Your resource was published at {{channel}}. You can manage your resources in private messages of @CorrelationCenterBot.",
   "noNeeds": "You have no needs.",
   "noResources": "You have no resources.",
   "buttonNeed": "New need",
@@ -20,5 +20,7 @@
   "updatedAt": "Updated at {{date}}",
   "deletedAt": "Deleted at {{date}}",
   "limitNeedsPerDay": "You have already posted {{count}} needs in the last 24 hours. Limit is {{limit}} per day (rolling 24h window).",
-  "limitResourcesPerDay": "You have already posted {{count}} resources in the last 24 hours. Limit is {{limit}} per day (rolling 24h window)."
+  "limitResourcesPerDay": "You have already posted {{count}} resources in the last 24 hours. Limit is {{limit}} per day (rolling 24h window).",
+  "needAddedPrivate": "Your need was published at {{channel}}. Use the \"My needs\" button or /needs to view and manage your needs.",
+  "resourceAddedPrivate": "Your resource was published at {{channel}}. Use the \"My resources\" button or /resources to view and manage your resources."
 }

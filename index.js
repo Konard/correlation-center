@@ -238,7 +238,6 @@ async function addItem(ctx, type) {
     need: {
       field: 'needs',
       role: 'requestor',
-      addedKey: 'needAdded',
       channelTemplate: (description, from) =>
         `${description}\n\n<i>Need of ${buildUserMention({
           id: from.id,
@@ -251,7 +250,6 @@ async function addItem(ctx, type) {
     resource: {
       field: 'resources',
       role: 'supplier',
-      addedKey: 'resourceAdded',
       channelTemplate: (description, from) =>
         `${description}\n\n<i>Resource provided by ${buildUserMention({
           id: from.id,
@@ -262,7 +260,7 @@ async function addItem(ctx, type) {
         })}.</i>`
     }
   };
-  const { field, role, addedKey, channelTemplate } = config[type];
+  const { field, role, channelTemplate } = config[type];
   const timestamp = new Date().toISOString();
   const item = {
     [role]: ctx.from.username || ctx.from.first_name || 'unknown',
@@ -293,7 +291,12 @@ async function addItem(ctx, type) {
   }
   user[field].push(item);
   await storage.writeDB();
-  await ctx.reply(t(ctx, addedKey, { channel: CHANNEL_USERNAME }));
+  // Send confirmation: private chat vs group chat
+  // Use specialized translation in private chats to mention management commands
+  const privateKey = type === 'need' ? 'needAddedPrivate' : 'resourceAddedPrivate';
+  const groupKey = type === 'need' ? 'needAdded' : 'resourceAdded';
+  const replyKey = ctx.chat.type === 'private' ? privateKey : groupKey;
+  await ctx.reply(t(ctx, replyKey, { channel: CHANNEL_USERNAME }));
   delete pendingActions[ctx.from.id];
 }
 // Helper to format timestamps consistently
