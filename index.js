@@ -146,13 +146,27 @@ async function addItem(ctx, type) {
       field: 'needs',
       role: 'requestor',
       addedKey: 'needAdded',
-      channelTemplate: (desc, name) => `${desc}\n\n<i>Need of @${name}.</i>`
+      channelTemplate: (description, from) =>
+        `${description}\n\n<i>Need of ${buildUserMention({
+          id: from.id,
+          username: from.username,
+          first_name: from.first_name,
+          last_name: from.last_name,
+          parseMode: 'HTML'
+        })}.</i>`
     },
     resource: {
       field: 'resources',
       role: 'supplier',
       addedKey: 'resourceAdded',
-      channelTemplate: (desc, name) => `${desc}\n\n<i>Resource provided by @${name}.</i>`
+      channelTemplate: (description, from) =>
+        `${description}\n\n<i>Resource provided by ${buildUserMention({
+          id: from.id,
+          username: from.username,
+          first_name: from.first_name,
+          last_name: from.last_name,
+          parseMode: 'HTML'
+        })}.</i>`
     }
   };
   const { field, role, addedKey, channelTemplate } = config[type];
@@ -171,12 +185,12 @@ async function addItem(ctx, type) {
       post = await ctx.telegram.sendPhoto(
         CHANNEL_USERNAME,
         fileId,
-        { caption: channelTemplate(item.description, item[role]), parse_mode: 'HTML' }
+        { caption: channelTemplate(item.description, ctx.from), parse_mode: 'HTML' }
       );
     } else {
       post = await ctx.telegram.sendMessage(
         CHANNEL_USERNAME,
-        channelTemplate(item.description, item[role]),
+        channelTemplate(item.description, ctx.from),
         { parse_mode: 'HTML' }
       );
     }
