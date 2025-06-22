@@ -7,6 +7,7 @@ import Storage from './storage.js';
 import { v7 as uuidv7 } from 'uuid';
 import { encodeHTML } from 'entities';
 import { markdown as mdFormat, markdownv2 as mdv2Format } from '@flla/telegram-format';
+import _ from 'lodash';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,10 +53,11 @@ export function buildUserMention({ id, username, first_name, last_name, parseMod
   if (username) {
     displayName = `@${username}`;
   } else {
-    // Trim and filter out empty/whitespace-only names
-    const fn = typeof first_name === 'string' ? first_name.trim() : first_name;
-    const ln = typeof last_name === 'string' ? last_name.trim() : last_name;
-    displayName = [fn, ln].filter(Boolean).join(' ') || 'unknown';
+    // Trim all string names, then filter out empty values
+    const raw = [first_name, last_name];
+    const trimmedAll = _.map(raw, (rawName) => (_.isString(rawName) ? _.trim(rawName) : rawName));
+    const cleaned = _.filter(trimmedAll, (name) => _.isString(name) ? !_.isEmpty(name) : Boolean(name));
+    displayName = cleaned.length ? _.join(cleaned, ' ') : 'unknown';
   }
   const link = username ? `https://t.me/${username}` : `tg://user?id=${id}`;
   switch (parseMode) {

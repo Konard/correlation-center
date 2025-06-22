@@ -12,6 +12,7 @@
     "@flla/telegram-format": "^3.1.2",
     "dotenv": "^16.0.0",
     "entities": "^6.0.1",
+    "lodash": "^4.17.21",
     "lowdb": "^3.0.0",
     "telegraf": "^4.12.3",
     "uuid": "^11.1.0"
