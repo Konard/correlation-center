@@ -159,9 +159,13 @@ async function listItems(ctx, type) {
     const item = user[plural][i];
     const createdAt = formatDate(item.createdAt);
     const updatedAt = formatDate(item.updatedAt);
-    // Build delete (and optional bump) buttons
+    // Build delete (and optional bump) buttons, keyed by channelMessageId
+    const delId = item.channelMessageId;
     const buttons = [
-      Markup.button.callback(t(ctx, `delete${capitalized}Button`) || 'Delete', `delete_${type}_${i}`)
+      Markup.button.callback(
+        t(ctx, `delete${capitalized}Button`) || 'Delete',
+        `delete_${type}_${delId}`
+      )
     ];
     const last = new Date(item.updatedAt || item.createdAt);
     const now = new Date();
@@ -314,24 +318,23 @@ itemTypes.forEach((type) => {
 
   // Deletion handlers
   bot.action(new RegExp(`delete_${type}_(\\d+)`), async (ctx) => {
-    const index = parseInt(ctx.match[1], 10);
+    const msgId = parseInt(ctx.match[1], 10);
     await storage.readDB();
     const user = storage.getUserData(ctx);
     const collection = user[plural];
-    if (index >= 0 && index < collection.length) {
-      const removed = collection.splice(index, 1)[0];
-      if (removed.channelMessageId) {
-        try {
-          await ctx.telegram.deleteMessage(CHANNEL_USERNAME, removed.channelMessageId);
-        } catch (e) {}
-      }
-      await storage.writeDB();
-      const createdAt = formatDate(removed.createdAt);
-      const deletedAt = formatDate();
-      await ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
-    } else {
-      await ctx.answerCbQuery('Not found');
+    // Remove items matching channelMessageId
+    const removedItems = _.remove(collection, (it) => it.channelMessageId === msgId);
+    if (!removedItems.length) {
+      return ctx.answerCbQuery('Not found');
     }
+    const removed = removedItems[0];
+    try {
+      await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId);
+    } catch (e) {}
+    await storage.writeDB();
+    const createdAt = formatDate(removed.createdAt);
+    const deletedAt = formatDate();
+    return ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
   });
 });
 // Bump handlers to refresh old messages in the channel
@@ -379,7 +382,10 @@ itemTypes.forEach((type) => {
     await ctx.editMessageText(
       `${item.description}\n\nCreated at ${createdAtStr}\nUpdated at ${updatedAtStr}`,
       Markup.inlineKeyboard([
-        [Markup.button.callback(t(ctx, deleteButtonKey), `delete_${type}_${index}`)]
+        [Markup.button.callback(
+          t(ctx, deleteButtonKey),
+          `delete_${type}_${item.channelMessageId}`
+        )]
       ])
     );
     await ctx.answerCbQuery(t(ctx, 'bumped'));
