@@ -193,27 +193,44 @@ async function listItems(ctx, type) {
 }
 // Helper to add a new item (need or resource)
 async function addItem(ctx, type) {
-  // Prepare and reject commands as input
   const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
   const promptKey = `prompt${capitalized}`;
-  if (ctx.message.text && ctx.message.text.startsWith('/')) {
-    await ctx.reply(t(ctx, promptKey));
-    return;
-  }
-  // Support both text and image inputs
-  const hasPhoto = ctx.message.photo && ctx.message.photo.length > 0;
-  const hasDocImage = ctx.message.document && ctx.message.document.mime_type.startsWith('image/');
+
   let description = '';
   let fileId = null;
-  if (hasPhoto) {
-    fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-    description = ctx.message.caption?.trim() || '';
-  } else if (hasDocImage) {
-    fileId = ctx.message.document.file_id;
-    description = ctx.message.caption?.trim() || '';
-  } else if (ctx.message.text) {
-    description = ctx.message.text.trim();
+
+  // If command used as a reply, take replied message as input
+  if (ctx.message.text && ctx.message.text.startsWith('/') && ctx.message.reply_to_message) {
+    const replied = ctx.message.reply_to_message;
+    if (replied.photo && replied.photo.length > 0) {
+      fileId = replied.photo[replied.photo.length - 1].file_id;
+      description = replied.caption?.trim() || '';
+    } else if (replied.document && replied.document.mime_type.startsWith('image/')) {
+      fileId = replied.document.file_id;
+      description = replied.caption?.trim() || '';
+    } else if (replied.text) {
+      description = replied.text.trim();
+    }
+  } else {
+    // Prepare and reject commands as input
+    if (ctx.message.text && ctx.message.text.startsWith('/')) {
+      await ctx.reply(t(ctx, promptKey));
+      return;
+    }
+    // Support both text and image inputs
+    const hasPhoto = ctx.message.photo && ctx.message.photo.length > 0;
+    const hasDocImage = ctx.message.document && ctx.message.document.mime_type.startsWith('image/');
+    if (hasPhoto) {
+      fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+      description = ctx.message.caption?.trim() || '';
+    } else if (hasDocImage) {
+      fileId = ctx.message.document.file_id;
+      description = ctx.message.caption?.trim() || '';
+    } else if (ctx.message.text) {
+      description = ctx.message.text.trim();
+    }
   }
+
   if (!description && !fileId) {
     await ctx.reply(t(ctx, promptKey));
     return;
@@ -315,8 +332,12 @@ itemTypes.forEach((type) => {
 
   // Prompt handlers (/need and keyboard)
   bot.command(type, async (ctx) => {
-    pendingActions[ctx.from.id] = type;
-    await ctx.reply(t(ctx, promptKey));
+    if (ctx.message.reply_to_message) {
+      await addItem(ctx, type);
+    } else {
+      pendingActions[ctx.from.id] = type;
+      await ctx.reply(t(ctx, promptKey));
+    }
   });
   bot.hears(
     [t({ from: { language_code: 'en' } }, buttonKey), t({ from: { language_code: 'ru' } }, buttonKey)],
