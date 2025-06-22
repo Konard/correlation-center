@@ -56,6 +56,36 @@ describe('buildUserMention', () => {
         '<a href="tg://user?id=12345">O&apos;Reilly</a>'
       );
     });
+
+    it('explicit parseMode HTML works same as default', () => {
+      const result = buildUserMention({ id, first_name: 'Foo', parseMode: 'HTML' });
+      assert.strictEqual(result, '<a href="tg://user?id=12345">Foo</a>');
+    });
+
+    it('fallback for unknown parseMode uses HTML', () => {
+      const result = buildUserMention({ id, first_name: 'Foo', parseMode: 'XML' });
+      assert.strictEqual(result, '<a href="tg://user?id=12345">Foo</a>');
+    });
+
+    it('accepts id as string', () => {
+      const result = buildUserMention({ id: '54321', first_name: 'Foo' });
+      assert.strictEqual(result, '<a href="tg://user?id=54321">Foo</a>');
+    });
+
+    it('trims whitespace in names for HTML', () => {
+      const result = buildUserMention({ id, first_name: '  Alice  ', last_name: '  Bob  ' });
+      assert.strictEqual(result, '<a href="tg://user?id=12345">Alice Bob</a>');
+    });
+
+    it('falls back to unknown for whitespace-only names in HTML', () => {
+      const result = buildUserMention({ id, first_name: '   ' });
+      assert.strictEqual(result, '<a href="tg://user?id=12345">unknown</a>');
+    });
+
+    it('falls back to unknown for empty string names in HTML', () => {
+      const result = buildUserMention({ id, first_name: '', last_name: '' });
+      assert.strictEqual(result, '<a href="tg://user?id=12345">unknown</a>');
+    });
   });
 
   describe('legacy Markdown format', () => {
@@ -107,6 +137,26 @@ describe('buildUserMention', () => {
     it('handles apostrophes in legacy Markdown', () => {
       const result = buildUserMention({ id, first_name: "O'Reilly", parseMode: 'Markdown' });
       assert.strictEqual(result, "[O'Reilly](tg://user?id=12345)");
+    });
+
+    it('accepts id as string in Markdown', () => {
+      const result = buildUserMention({ id: '54321', first_name: 'Foo', parseMode: 'Markdown' });
+      assert.strictEqual(result, '[Foo](tg://user?id=54321)');
+    });
+
+    it('trims whitespace in names for Markdown', () => {
+      const result = buildUserMention({ id, first_name: '  Alice  ', last_name: '  Bob  ', parseMode: 'Markdown' });
+      assert.strictEqual(result, '[Alice Bob](tg://user?id=12345)');
+    });
+
+    it('falls back to unknown for whitespace-only names in Markdown', () => {
+      const result = buildUserMention({ id, first_name: '   ', parseMode: 'Markdown' });
+      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
+    });
+
+    it('falls back to unknown for empty string names in Markdown', () => {
+      const result = buildUserMention({ id, first_name: '', last_name: '', parseMode: 'Markdown' });
+      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
     });
   });
 
@@ -164,6 +214,26 @@ describe('buildUserMention', () => {
     it('handles apostrophes in MarkdownV2', () => {
       const result = buildUserMention({ id, first_name: "O'Reilly", parseMode: 'MarkdownV2' });
       assert.strictEqual(result, "[O'Reilly](tg://user?id=12345)");
+    });
+
+    it('accepts id as string in MarkdownV2', () => {
+      const result = buildUserMention({ id: '54321', first_name: 'Foo', parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, '[Foo](tg://user?id=54321)');
+    });
+
+    it('trims whitespace in names for MarkdownV2', () => {
+      const result = buildUserMention({ id, first_name: '  Alice  ', last_name: '  Bob  ', parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, '[Alice Bob](tg://user?id=12345)');
+    });
+
+    it('falls back to unknown for whitespace-only names in MarkdownV2', () => {
+      const result = buildUserMention({ id, first_name: '   ', parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
+    });
+
+    it('falls back to unknown for empty string names in MarkdownV2', () => {
+      const result = buildUserMention({ id, first_name: '', last_name: '', parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
     });
   });
 }); 

@@ -52,7 +52,10 @@ export function buildUserMention({ id, username, first_name, last_name, parseMod
   if (username) {
     displayName = `@${username}`;
   } else {
-    displayName = [first_name, last_name].filter(Boolean).join(' ') || 'unknown';
+    // Trim and filter out empty/whitespace-only names
+    const fn = typeof first_name === 'string' ? first_name.trim() : first_name;
+    const ln = typeof last_name === 'string' ? last_name.trim() : last_name;
+    displayName = [fn, ln].filter(Boolean).join(' ') || 'unknown';
   }
   const link = username ? `https://t.me/${username}` : `tg://user?id=${id}`;
   switch (parseMode) {
