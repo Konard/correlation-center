@@ -103,6 +103,8 @@ async function migrateUserMentions() {
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
 const CHANNEL_USERNAME = '@CorrelationCenter';
+// Daily posting limits per user
+const DAILY_LIMITS = { need: 3, resource: 3 };
 
 /**
  * Build a Telegram user mention link in various parse modes.
@@ -218,6 +220,20 @@ async function addItem(ctx, type) {
   }
   await storage.readDB();
   const user = storage.getUserData(ctx);
+  // Enforce rolling 24-hour creation limits
+  const fieldKey = `${type}s`;
+  const sinceTs = Date.now() - 24 * 60 * 60 * 1000;
+  const recentItems = _.filter(
+    user[fieldKey],
+    (item) => new Date(item.createdAt).getTime() >= sinceTs
+  );
+  const limitKey = type === 'need' ? 'limitNeedsPerDay' : 'limitResourcesPerDay';
+  const limit = DAILY_LIMITS[type];
+  if (recentItems.length >= limit) {
+    await ctx.reply(t(ctx, limitKey, { count: recentItems.length, limit }));
+    delete pendingActions[ctx.from.id];
+    return;
+  }
   const config = {
     need: {
       field: 'needs',

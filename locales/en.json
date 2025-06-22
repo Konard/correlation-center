@@ -18,5 +18,7 @@
   "buttonMyResources": "My resources",
   "createdAt": "Created at {{date}}",
   "updatedAt": "Updated at {{date}}",
-  "deletedAt": "Deleted at {{date}}"
+  "deletedAt": "Deleted at {{date}}",
+  "limitNeedsPerDay": "You have already posted {{count}} needs in the last 24 hours. Limit is {{limit}} per day (rolling 24h window).",
+  "limitResourcesPerDay": "You have already posted {{count}} resources in the last 24 hours. Limit is {{limit}} per day (rolling 24h window)."
 }

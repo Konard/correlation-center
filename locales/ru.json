@@ -18,5 +18,7 @@
   "buttonMyResources": "Мои ресурсы",
   "createdAt": "Создано {{date}}",
   "updatedAt": "Обновлено {{date}}",
-  "deletedAt": "Удалено {{date}}"
+  "deletedAt": "Удалено {{date}}",
+  "limitNeedsPerDay": "Вы уже разместили {{count}} потребностей за последние 24 часа. Лимит — {{limit}} в сутки.",
+  "limitResourcesPerDay": "Вы уже разместили {{count}} ресурсов за последние 24 часа. Лимит — {{limit}} в сутки."
 }
