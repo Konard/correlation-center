@@ -12,8 +12,8 @@ class Storage {
     await this.db.write();
   }
 
-  getUserData(ctx) {
-    const id = String(ctx.chat.id);
+  getUserData(userId) {
+    const id = String(userId);
     if (!this.db.data.users[id]) {
       this.db.data.users[id] = { needs: [], resources: [] };
     }

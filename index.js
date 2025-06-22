@@ -150,7 +150,7 @@ export function buildUserMention({ id, username, first_name, last_name, parseMod
 async function listItems(ctx, type) {
   if (ctx.chat.type !== 'private') return;
   await storage.readDB();
-  const user = storage.getUserData(ctx);
+  const user = storage.getUserData(ctx.from.id);
   const plural = `${type}s`;
   const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
   const capitalizedPlural = plural.charAt(0).toUpperCase() + plural.slice(1);
@@ -219,7 +219,7 @@ async function addItem(ctx, type) {
     return;
   }
   await storage.readDB();
-  const user = storage.getUserData(ctx);
+  const user = storage.getUserData(ctx.from.id);
   // Enforce rolling 24-hour creation limits
   const fieldKey = `${type}s`;
   const sinceTs = Date.now() - 24 * 60 * 60 * 1000;
@@ -341,7 +341,7 @@ itemTypes.forEach((type) => {
   bot.action(new RegExp(`delete_${type}_(\\d+)`), async (ctx) => {
     const msgId = parseInt(ctx.match[1], 10);
     await storage.readDB();
-    const user = storage.getUserData(ctx);
+    const user = storage.getUserData(ctx.from.id);
     const collection = user[plural];
     // Remove items matching channelMessageId
     const removedItems = _.remove(collection, (it) => it.channelMessageId === msgId);
@@ -368,7 +368,7 @@ itemTypes.forEach((type) => {
   bot.action(new RegExp(`bump_${type}_(\\d+)`), async (ctx) => {
     const msgId = parseInt(ctx.match[1], 10);
     await storage.readDB();
-    const user = storage.getUserData(ctx);
+    const user = storage.getUserData(ctx.from.id);
     const items = user[plural];
     // Find item by channelMessageId
     const item = _.find(items, (it) => it.channelMessageId === msgId);
@@ -431,7 +431,7 @@ function getMainKeyboard(ctx) {
 
 bot.start(async (ctx) => {
   await storage.readDB();
-  storage.getUserData(ctx);
+  storage.getUserData(ctx.from.id);
   await storage.writeDB();
   await ctx.reply(t(ctx, 'welcome', { description: t(ctx, 'description') }), getMainKeyboard(ctx));
 });
