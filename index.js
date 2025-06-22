@@ -334,7 +334,11 @@ itemTypes.forEach((type) => {
     await storage.writeDB();
     const createdAt = formatDate(removed.createdAt);
     const deletedAt = formatDate();
-    return ctx.editMessageText(`${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`);
+    await ctx.editMessageText(
+      `${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`
+    );
+    // answer the callback query to remove loading state
+    await ctx.answerCbQuery();
   });
 });
 // Bump handlers to refresh old messages in the channel
