@@ -27,7 +27,7 @@ describe('buildUserMention', () => {
 
   it('uses username when provided for HTML', () => {
     const result = buildUserMention({ id, username: 'john_doe' });
-    assert.strictEqual(result, '<a href="https://t.me/john_doe">@john_doe</a>');
+    assert.strictEqual(result, '<a href="https://t.me/john_doe">&commat;john&lowbar;doe</a>');
   });
 
   it('escapes HTML special characters in display name', () => {

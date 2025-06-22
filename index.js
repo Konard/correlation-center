@@ -63,12 +63,8 @@ export function buildUserMention({ id, username, first_name, last_name, parseMod
       return mdv2Format.url(mdv2Format.escape(displayName), link);
     case 'HTML':
     default:
-      // Manual escape only &, <, > for HTML
-      const escapedHTML = displayName
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-      return `<a href="${link}">${escapedHTML}</a>`;
+      // Use entities.encodeHTML for full HTML escaping
+      return `<a href="${link}">${encodeHTML(displayName)}</a>`;
   }
 }
 
