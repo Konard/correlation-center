@@ -202,14 +202,31 @@ async function addItem(ctx, type) {
   // If command used as a reply, take replied message as input
   if (ctx.message.text && ctx.message.text.startsWith('/') && ctx.message.reply_to_message) {
     const replied = ctx.message.reply_to_message;
+    const channelName = CHANNEL_USERNAME.startsWith('@') ? CHANNEL_USERNAME.slice(1) : CHANNEL_USERNAME;
+    const isFromChannel = replied.forward_from_chat && replied.forward_from_chat.username === channelName;
     if (replied.photo && replied.photo.length > 0) {
       fileId = replied.photo[replied.photo.length - 1].file_id;
-      description = replied.caption?.trim() || '';
+      let raw = replied.caption?.trim() || '';
+      if (isFromChannel) {
+        const lines = raw.split('\n');
+        if (lines.length >= 3) raw = lines.slice(0, -2).join('\n').trim();
+      }
+      description = raw;
     } else if (replied.document && replied.document.mime_type.startsWith('image/')) {
       fileId = replied.document.file_id;
-      description = replied.caption?.trim() || '';
+      let raw = replied.caption?.trim() || '';
+      if (isFromChannel) {
+        const lines = raw.split('\n');
+        if (lines.length >= 3) raw = lines.slice(0, -2).join('\n').trim();
+      }
+      description = raw;
     } else if (replied.text) {
-      description = replied.text.trim();
+      let raw = replied.text.trim();
+      if (isFromChannel) {
+        const lines = raw.split('\n');
+        if (lines.length >= 3) raw = lines.slice(0, -2).join('\n').trim();
+      }
+      description = raw;
     }
   } else {
     // Prepare and reject commands as input
