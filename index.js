@@ -105,6 +105,8 @@ const pendingActions = {};
 const CHANNEL_USERNAME = '@CorrelationCenter';
 // Daily posting limits per user
 const DAILY_LIMITS = { need: 3, resource: 3 };
+// Delay (ms) before prompting user for description when pending action is set
+const PROMPT_DELAY_MS = Number(process.env.PROMPT_DELAY_MS) || 750;
 
 /**
  * Build a Telegram user mention link in various parse modes.
@@ -198,11 +200,13 @@ async function addItem(ctx, type) {
 
   let description = '';
   let fileId = null;
+  // Detect forwarded messages from channel to strip auto-appended lines
+  const channelName = CHANNEL_USERNAME.startsWith('@') ? CHANNEL_USERNAME.slice(1) : CHANNEL_USERNAME;
+  const isFromChannelMsg = ctx.message.forward_from_chat && ctx.message.forward_from_chat.username === channelName;
 
   // If command used as a reply, take replied message as input
   if (ctx.message.text && ctx.message.text.startsWith('/') && ctx.message.reply_to_message) {
     const replied = ctx.message.reply_to_message;
-    const channelName = CHANNEL_USERNAME.startsWith('@') ? CHANNEL_USERNAME.slice(1) : CHANNEL_USERNAME;
     const isFromChannel = replied.forward_from_chat && replied.forward_from_chat.username === channelName;
     if (replied.photo && replied.photo.length > 0) {
       fileId = replied.photo[replied.photo.length - 1].file_id;
@@ -234,17 +238,32 @@ async function addItem(ctx, type) {
       await ctx.reply(t(ctx, promptKey));
       return;
     }
-    // Support both text and image inputs
+    // Support both text and image inputs, strip channel footer if forwarded
     const hasPhoto = ctx.message.photo && ctx.message.photo.length > 0;
     const hasDocImage = ctx.message.document && ctx.message.document.mime_type.startsWith('image/');
     if (hasPhoto) {
       fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-      description = ctx.message.caption?.trim() || '';
+      let raw = ctx.message.caption?.trim() || '';
+      if (isFromChannelMsg) {
+        const lines = raw.split('\n');
+        if (lines.length >= 3) raw = lines.slice(0, -2).join('\n').trim();
+      }
+      description = raw;
     } else if (hasDocImage) {
       fileId = ctx.message.document.file_id;
-      description = ctx.message.caption?.trim() || '';
+      let raw = ctx.message.caption?.trim() || '';
+      if (isFromChannelMsg) {
+        const lines = raw.split('\n');
+        if (lines.length >= 3) raw = lines.slice(0, -2).join('\n').trim();
+      }
+      description = raw;
     } else if (ctx.message.text) {
-      description = ctx.message.text.trim();
+      let raw = ctx.message.text.trim();
+      if (isFromChannelMsg) {
+        const lines = raw.split('\n');
+        if (lines.length >= 3) raw = lines.slice(0, -2).join('\n').trim();
+      }
+      description = raw;
     }
   }
 
@@ -350,17 +369,26 @@ itemTypes.forEach((type) => {
   // Prompt handlers (/need and keyboard)
   bot.command(type, async (ctx) => {
     if (ctx.message.reply_to_message) {
-      await addItem(ctx, type);
-    } else {
-      pendingActions[ctx.from.id] = type;
-      await ctx.reply(t(ctx, promptKey));
+      return addItem(ctx, type);
     }
+    // Set pending and schedule prompt after delay
+    pendingActions[ctx.from.id] = type;
+    setTimeout(() => {
+      if (pendingActions[ctx.from.id] === type) {
+        ctx.reply(t(ctx, promptKey));
+      }
+    }, PROMPT_DELAY_MS);
   });
   bot.hears(
     [t({ from: { language_code: 'en' } }, buttonKey), t({ from: { language_code: 'ru' } }, buttonKey)],
     async (ctx) => {
+      // Keyboard-triggered same flow with delayed prompt
       pendingActions[ctx.from.id] = type;
-      await ctx.reply(t(ctx, promptKey));
+      setTimeout(() => {
+        if (pendingActions[ctx.from.id] === type) {
+          ctx.reply(t(ctx, promptKey));
+        }
+      }, PROMPT_DELAY_MS);
     }
   );
 
