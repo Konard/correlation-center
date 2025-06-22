@@ -15,5 +15,8 @@
   "bumpButton": "Поднять",
   "bumped": "Поднято!",
   "buttonMyNeeds": "Мои потребности",
-  "buttonMyResources": "Мои ресурсы"
+  "buttonMyResources": "Мои ресурсы",
+  "createdAt": "Создано {{date}}",
+  "updatedAt": "Обновлено {{date}}",
+  "deletedAt": "Удалено {{date}}"
 }

@@ -178,10 +178,10 @@ async function listItems(ctx, type) {
         )
       );
     }
-    // Include Updated at if item has been bumped
-    let message = `${item.description}\n\nCreated at ${createdAt}`;
+    // Localized creation and update timestamps
+    let message = `${item.description}\n\n${t(ctx, 'createdAt', { date: createdAt })}`;
     if (item.updatedAt && item.updatedAt !== item.createdAt) {
-      message += `\nUpdated at ${updatedAt}`;
+      message += `\n${t(ctx, 'updatedAt', { date: updatedAt })}`;
     }
     await ctx.reply(
       message,
@@ -337,7 +337,7 @@ itemTypes.forEach((type) => {
     const createdAt = formatDate(removed.createdAt);
     const deletedAt = formatDate();
     await ctx.editMessageText(
-      `${removed.description}\n\nCreated at ${createdAt}\nDeleted at ${deletedAt}`
+      `${removed.description}\n\n${t(ctx, 'createdAt', { date: createdAt })}\n${t(ctx, 'deletedAt', { date: deletedAt })}`
     );
     // answer the callback query to remove loading state
     await ctx.answerCbQuery();
@@ -387,7 +387,7 @@ itemTypes.forEach((type) => {
     const createdAtStr = formatDate(item.createdAt);
     const updatedAtStr = formatDate();
     await ctx.editMessageText(
-      `${item.description}\n\nCreated at ${createdAtStr}\nUpdated at ${updatedAtStr}`,
+      `${item.description}\n\n${t(ctx, 'createdAt', { date: createdAtStr })}\n${t(ctx, 'updatedAt', { date: updatedAtStr })}`,
       Markup.inlineKeyboard([
         [Markup.button.callback(
           t(ctx, deleteButtonKey),
