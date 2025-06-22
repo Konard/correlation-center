@@ -459,6 +459,8 @@ bot.start(async (ctx) => {
 
 // Handle all incoming messages (text or images) for adding items
 bot.on('message', async (ctx, next) => {
+  // If user sent /cancel, bypass addItem so cancel command can run
+  if (ctx.message.text && ctx.message.text.startsWith('/cancel')) return next();
   const action = pendingActions[ctx.from.id];
   if (!action) return next();
   await addItem(ctx, action);
@@ -466,6 +468,16 @@ bot.on('message', async (ctx, next) => {
 
 bot.command('help', async (ctx) => {
   await ctx.reply(t(ctx, 'help'));
+});
+
+// Cancel any pending action
+bot.command('cancel', async (ctx) => {
+  if (pendingActions[ctx.from.id]) {
+    delete pendingActions[ctx.from.id];
+    await ctx.reply(t(ctx, 'actionCancelled'));
+  } else {
+    await ctx.reply(t(ctx, 'noPendingAction'));
+  }
 });
 
 // Only start the bot outside of test environment
