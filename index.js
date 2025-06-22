@@ -32,6 +32,74 @@ function t(ctx, key, vars = {}) {
 const storage = new Storage();
 await storage.initDB();
 
+// Migrate old user mentions to new clickable mentions on startup
+async function migrateUserMentions() {
+  await storage.readDB();
+  const users = storage.db.data.users || {};
+  let anyUpdated = false;
+  for (const [userId, user] of Object.entries(users)) {
+    for (const type of ['needs', 'resources']) {
+      const items = user[type] || [];
+      for (const item of items) {
+        const msgId = item.channelMessageId;
+        if (!msgId) continue;
+        let chat;
+        try {
+          chat = await bot.telegram.getChat(userId);
+        } catch (err) {
+          console.error(`Failed to fetch chat for user ${userId}:`, err);
+          continue;
+        }
+        const mention = buildUserMention({
+          id: chat.id,
+          username: chat.username,
+          first_name: chat.first_name,
+          last_name: chat.last_name,
+          parseMode: 'HTML'
+        });
+        let newContent;
+        if (type === 'needs') {
+          newContent = `${item.description}\n\n<i>Need of ${mention}.</i>`;
+        } else {
+          newContent = `${item.description}\n\n<i>Resource provided by ${mention}.</i>`;
+        }
+        try {
+          if (item.fileId) {
+            await bot.telegram.editMessageCaption(
+              CHANNEL_USERNAME,
+              msgId,
+              undefined,
+              newContent,
+              { parse_mode: 'HTML' }
+            );
+          } else {
+            await bot.telegram.editMessageText(
+              CHANNEL_USERNAME,
+              msgId,
+              undefined,
+              newContent,
+              { parse_mode: 'HTML' }
+            );
+          }
+          // Update updatedAt and role field to reflect latest user data
+          const now = new Date().toISOString();
+          item.updatedAt = now;
+          const roleField = type === 'needs' ? 'requestor' : 'supplier';
+          item[roleField] = chat.username || chat.first_name || 'unknown';
+          anyUpdated = true;
+          console.log(`Migrated message ${msgId} for user ${userId}`);
+        } catch (err) {
+          console.error(`Failed to migrate message ${msgId} for user ${userId}:`, err);
+        }
+      }
+    }
+  }
+  if (anyUpdated) {
+    await storage.writeDB();
+    console.log('User mention migration: database updated');
+  }
+}
+
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
@@ -351,6 +419,8 @@ bot.command('help', async (ctx) => {
 
 // Only start the bot outside of test environment
 if (process.env.NODE_ENV !== 'test') {
+  // console.log('Migrating old user mentions...');
+  // await migrateUserMentions();
   console.log('Launching bot...');
   bot.launch().catch((error) => {
     console.error('Failed to launch bot. Please check your BOT_TOKEN:', error);
