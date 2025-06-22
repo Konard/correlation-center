@@ -5,8 +5,7 @@ import path from 'path';
 import { Telegraf, Markup } from 'telegraf';
 import Storage from './storage.js';
 import { v7 as uuidv7 } from 'uuid';
-import { encodeHTML } from 'entities';
-import { markdown as mdFormat, markdownv2 as mdv2Format } from '@flla/telegram-format';
+import { html as htmlFormat, markdown as mdFormat, markdownv2 as mdv2Format } from '@flla/telegram-format';
 import _ from 'lodash';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -136,13 +135,12 @@ export function buildUserMention({ id, username, first_name, last_name, parseMod
       return mdv2Format.url(mdv2Format.escape(displayName), link);
     case 'HTML':
     default:
-      // In HTML mode, if there is a username, preserve '@' and escape only the username
+      // In HTML mode, use htmlFormat.escape for any needed escaping
       if (username) {
-        // Preserve literal username (only alphanumeric and underscore allowed)
-        return `<a href="${link}">@${username}</a>`;
+        // preserve literal @username
+        return htmlFormat.url(`@${username}`, link);
       }
-      // Otherwise, escape the combined displayName
-      return `<a href="${link}">${encodeHTML(displayName)}</a>`;
+      return htmlFormat.url(htmlFormat.escape(displayName), link);
   }
 }
 

@@ -38,22 +38,24 @@ describe('buildUserMention', () => {
 
     it('supports emoji in HTML', () => {
       const result = buildUserMention({ id, first_name: '😀😃' });
-      assert.strictEqual(result, '<a href="tg://user?id=12345">&#x1f600;&#x1f603;</a>');
+      assert.strictEqual(result, '<a href="tg://user?id=12345">😀😃</a>');
     });
 
-    it('escapes double quotes in HTML', () => {
+    it('does not escape double quotes in HTML when using htmlFormat.escape', () => {
       const result = buildUserMention({ id, first_name: 'He said "Hi"' });
+      // htmlFormat.escape only escapes <, >, &
       assert.strictEqual(
         result,
-        '<a href="tg://user?id=12345">He said &quot;Hi&quot;</a>'
+        '<a href="tg://user?id=12345">He said "Hi"</a>'
       );
     });
 
-    it('escapes apostrophes in HTML', () => {
+    it('does not escape apostrophes in HTML when using htmlFormat.escape', () => {
       const result = buildUserMention({ id, first_name: "O'Reilly" });
+      // apostrophes are not escaped
       assert.strictEqual(
         result,
-        '<a href="tg://user?id=12345">O&apos;Reilly</a>'
+        '<a href="tg://user?id=12345">O\'Reilly</a>'
       );
     });
 
@@ -85,6 +87,15 @@ describe('buildUserMention', () => {
     it('falls back to unknown for empty string names in HTML', () => {
       const result = buildUserMention({ id, first_name: '', last_name: '' });
       assert.strictEqual(result, '<a href="tg://user?id=12345">unknown</a>');
+    });
+
+    it('supports non-Latin characters and hash without escaping', () => {
+      const name = 'драматург шестой #ДедпулПрости';
+      const result = buildUserMention({ id, first_name: name });
+      assert.strictEqual(
+        result,
+        `<a href="tg://user?id=12345">${name}</a>`
+      );
     });
   });
 
