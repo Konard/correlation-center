@@ -168,12 +168,14 @@ async function listItems(ctx, type) {
       )
     ];
     const last = new Date(item.updatedAt || item.createdAt);
-    const now = new Date();
-    const ageMs = now.getTime() - last.getTime();
-    // Show bump only if item is older than 24 hours
-    if (ageMs >= 24 * 60 * 60 * 1000) {
+    const ageMs = Date.now() - last.getTime();
+    // Show bump only if item is older than 24 hours, using channelMessageId
+    if (ageMs >= 24 * 60 * 60 * 1000 && item.channelMessageId) {
       buttons.push(
-        Markup.button.callback(t(ctx, 'bumpButton') || 'Bump', `bump_${type}_${i}`)
+        Markup.button.callback(
+          t(ctx, 'bumpButton') || 'Bump',
+          `bump_${type}_${item.channelMessageId}`
+        )
       );
     }
     // Include Updated at if item has been bumped
@@ -345,15 +347,16 @@ itemTypes.forEach((type) => {
 itemTypes.forEach((type) => {
   const plural = `${type}s`;
   bot.action(new RegExp(`bump_${type}_(\\d+)`), async (ctx) => {
-    const index = parseInt(ctx.match[1], 10);
+    const msgId = parseInt(ctx.match[1], 10);
     await storage.readDB();
     const user = storage.getUserData(ctx);
     const items = user[plural];
-    if (index < 0 || index >= items.length) return ctx.answerCbQuery('Not found');
-    const item = items[index];
+    // Find item by channelMessageId
+    const item = _.find(items, (it) => it.channelMessageId === msgId);
+    if (!item) return ctx.answerCbQuery('Not found');
     // Remove old channel message
-    if (item.channelMessageId) {
-      try { await ctx.telegram.deleteMessage(CHANNEL_USERNAME, item.channelMessageId); } catch (e) {}
+    if (msgId) {
+      try { await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId); } catch (e) {}
     }
     // Re-post to channel
     let post;
