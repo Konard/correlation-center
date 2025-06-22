@@ -1,7 +1,7 @@
 {
   "welcome": "Welcome to Correlation Center Bot!\n\n{{description}}\n\nType /help to see all commands.\n\nUse the keyboard below for quick access.",
   "description": "The Correlation Center is a system inspired by Jacque Fresco ideas. It ensures that all needs are satisfied using available resources. In short, it's a system to manage needs and resources.",
-  "help": "Available commands:\n/start - Start the bot\n/help - Show this help message\n/need - Add a need\n/needs - List your needs (private only)\n/resource - Add a resource\n/resources - List your resources (private only)\n/cancel - Cancel current pending action",
+  "help": "Available commands:\n/start - Start the bot\n/help - Show this help message\n/need - Add a need\n/needs - List your needs\n/resource - Add a resource\n/resources - List your resources\n/cancel - Cancel current pending action",
   "promptNeed": "Please send the description of your need as your next message.",
   "promptResource": "Please send the description of your resource as your next message.",
   "needAdded": "Your need was published at {{channel}}. You can manage your needs in private messages of @CorrelationCenterBot.",
@@ -24,5 +24,6 @@
   "needAddedPrivate": "Your need was published at {{channel}}. Use the \"My needs\" button or /needs to view and manage your needs.",
   "resourceAddedPrivate": "Your resource was published at {{channel}}. Use the \"My resources\" button or /resources to view and manage your resources.",
   "actionCancelled": "Your current action has been canceled.",
-  "noPendingAction": "You have no pending action to cancel."
+  "noPendingAction": "You have no pending action to cancel.",
+  "helpGroup": "Available commands:\n/start - Start the bot\n/help - Show this help message\n/need - Add a need\n/resource - Add a resource\n/cancel - Cancel current pending action"
 }

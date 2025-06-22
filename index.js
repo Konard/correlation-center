@@ -466,8 +466,13 @@ bot.on('message', async (ctx, next) => {
   await addItem(ctx, action);
 });
 
+// Help command: private vs group
 bot.command('help', async (ctx) => {
-  await ctx.reply(t(ctx, 'help'));
+  if (ctx.chat.type === 'private') {
+    await ctx.reply(t(ctx, 'help'));
+  } else {
+    await ctx.reply(t(ctx, 'helpGroup'));
+  }
 });
 
 // Cancel any pending action
