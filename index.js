@@ -5,6 +5,8 @@ import path from 'path';
 import { Telegraf, Markup } from 'telegraf';
 import Storage from './storage.js';
 import { v7 as uuidv7 } from 'uuid';
+import { encodeHTML } from 'entities';
+import { markdown as mdFormat, markdownv2 as mdv2Format } from '@flla/telegram-format';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +35,43 @@ await storage.initDB();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
 const CHANNEL_USERNAME = '@CorrelationCenter';
+
+/**
+ * Build a Telegram user mention link in various parse modes.
+ *
+ * @param {Object} options - Options for building the mention link.
+ * @param {number|string} options.id - Telegram user ID.
+ * @param {string} [options.username] - Telegram username (without '@').
+ * @param {string} [options.first_name] - User's first name.
+ * @param {string} [options.last_name] - User's last name.
+ * @param {'HTML'|'Markdown'|'MarkdownV2'} [options.parseMode='HTML'] - The parse mode to use.
+ * @returns {string} A formatted mention link for the user.
+ */
+export function buildUserMention({ id, username, first_name, last_name, parseMode = 'HTML' }) {
+  let displayName;
+  if (username) {
+    displayName = `@${username}`;
+  } else {
+    displayName = [first_name, last_name].filter(Boolean).join(' ') || 'unknown';
+  }
+  const link = username ? `https://t.me/${username}` : `tg://user?id=${id}`;
+  switch (parseMode) {
+    case 'Markdown':
+      // Legacy Markdown: no manual escape (formatter handles it)
+      return mdFormat.url(displayName, link);
+    case 'MarkdownV2':
+      return mdv2Format.url(mdv2Format.escape(displayName), link);
+    case 'HTML':
+    default:
+      // Manual escape only &, <, > for HTML
+      const escapedHTML = displayName
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      return `<a href="${link}">${escapedHTML}</a>`;
+  }
+}
+
 // Helper to list items for both needs and resources
 async function listItems(ctx, type) {
   if (ctx.chat.type !== 'private') return;
@@ -290,13 +329,15 @@ bot.command('help', async (ctx) => {
   await ctx.reply(t(ctx, 'help'));
 });
 
-// Launch bot
-console.log('Launching bot...');
-bot.launch().catch((error) => {
-  console.error('Failed to launch bot. Please check your BOT_TOKEN:', error);
-  process.exit(1);
-});
-console.log('Bot started');
+// Only start the bot outside of test environment
+if (process.env.NODE_ENV !== 'test') {
+  console.log('Launching bot...');
+  bot.launch().catch((error) => {
+    console.error('Failed to launch bot. Please check your BOT_TOKEN:', error);
+    process.exit(1);
+  });
+  console.log('Bot started');
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  process.once('SIGINT', () => bot.stop('SIGINT'));
+  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+}

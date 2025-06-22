@@ -5,10 +5,13 @@
   "description": "Telegram bot to manage needs and resources (Correlation Center)",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test"
   },
   "dependencies": {
+    "@flla/telegram-format": "^3.1.2",
     "dotenv": "^16.0.0",
+    "entities": "^6.0.1",
     "lowdb": "^3.0.0",
     "telegraf": "^4.12.3",
     "uuid": "^11.1.0"
