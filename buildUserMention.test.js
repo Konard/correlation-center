@@ -88,6 +88,26 @@ describe('buildUserMention', () => {
       const result = buildUserMention({ id, first_name: '😀😃', parseMode: 'Markdown' });
       assert.strictEqual(result, '[😀😃](tg://user?id=12345)');
     });
+
+    it('uses only first name if last name is missing in Markdown', () => {
+      const result = buildUserMention({ id, first_name: 'Alice', parseMode: 'Markdown' });
+      assert.strictEqual(result, '[Alice](tg://user?id=12345)');
+    });
+
+    it('uses only last name if first name is missing in Markdown', () => {
+      const result = buildUserMention({ id, last_name: 'Smith', parseMode: 'Markdown' });
+      assert.strictEqual(result, '[Smith](tg://user?id=12345)');
+    });
+
+    it('handles quotes in legacy Markdown', () => {
+      const result = buildUserMention({ id, first_name: 'He said "Hi"', parseMode: 'Markdown' });
+      assert.strictEqual(result, '[He said "Hi"](tg://user?id=12345)');
+    });
+
+    it('handles apostrophes in legacy Markdown', () => {
+      const result = buildUserMention({ id, first_name: "O'Reilly", parseMode: 'Markdown' });
+      assert.strictEqual(result, "[O'Reilly](tg://user?id=12345)");
+    });
   });
 
   describe('MarkdownV2 format', () => {
@@ -119,6 +139,31 @@ describe('buildUserMention', () => {
     it('escapes parentheses in MarkdownV2', () => {
       const result = buildUserMention({ id, first_name: '(Test)', parseMode: 'MarkdownV2' });
       assert.strictEqual(result, '[\\(Test\\)](tg://user?id=12345)');
+    });
+
+    it('formats username in MarkdownV2', () => {
+      const result = buildUserMention({ id, username: 'john_doe', parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, '[@john\\_doe](https://t.me/john_doe)');
+    });
+
+    it('uses only first name if last name is missing in MarkdownV2', () => {
+      const result = buildUserMention({ id, first_name: 'Alice', parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, '[Alice](tg://user?id=12345)');
+    });
+
+    it('uses only last name if first name is missing in MarkdownV2', () => {
+      const result = buildUserMention({ id, last_name: 'Smith', parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, '[Smith](tg://user?id=12345)');
+    });
+
+    it('handles quotes in MarkdownV2', () => {
+      const result = buildUserMention({ id, first_name: 'He said "Hi"', parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, '[He said "Hi"](tg://user?id=12345)');
+    });
+
+    it('handles apostrophes in MarkdownV2', () => {
+      const result = buildUserMention({ id, first_name: "O'Reilly", parseMode: 'MarkdownV2' });
+      assert.strictEqual(result, "[O'Reilly](tg://user?id=12345)");
     });
   });
 }); 
