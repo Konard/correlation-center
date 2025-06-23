@@ -31,17 +31,20 @@ function t(ctx, key, vars = {}) {
 const storage = new Storage();
 await storage.initDB();
 
-// Migrate old user mentions to new clickable mentions on startup
+// Migrate old user mentions to new clickable mentions on startup (up to MIGRATE_LIMIT items)
 async function migrateUserMentions() {
+  const LIMIT = Number(process.env.MIGRATE_LIMIT) || 1;
+  let migratedCount = 0;
   await storage.readDB();
   const users = storage.db.data.users || {};
-  let anyUpdated = false;
-  for (const [userId, user] of Object.entries(users)) {
+  outer: for (const [userId, user] of Object.entries(users)) {
     for (const type of ['needs', 'resources']) {
       const items = user[type] || [];
       for (const item of items) {
         const msgId = item.channelMessageId;
         if (!msgId) continue;
+        if (migratedCount >= LIMIT) break outer;
+        // Fetch chat to build mention
         let chat;
         try {
           chat = await bot.telegram.getChat(userId);
@@ -56,6 +59,7 @@ async function migrateUserMentions() {
           last_name: chat.last_name,
           parseMode: 'HTML'
         });
+        const oldItem = { ...item };
         let newContent;
         if (type === 'needs') {
           newContent = `${item.description}\n\n<i>Need of ${mention}.</i>`;
@@ -63,6 +67,7 @@ async function migrateUserMentions() {
           newContent = `${item.description}\n\n<i>Resource provided by ${mention}.</i>`;
         }
         try {
+          console.log(`Before migration for message ${msgId}:`, JSON.stringify(oldItem));
           if (item.fileId) {
             await bot.telegram.editMessageCaption(
               CHANNEL_USERNAME,
@@ -80,22 +85,24 @@ async function migrateUserMentions() {
               { parse_mode: 'HTML' }
             );
           }
-          // Update updatedAt and role field to reflect latest user data
+          // Update DB record
           const now = new Date().toISOString();
           item.updatedAt = now;
           const roleField = type === 'needs' ? 'requestor' : 'supplier';
           item[roleField] = chat.username || chat.first_name || 'unknown';
-          anyUpdated = true;
-          console.log(`Migrated message ${msgId} for user ${userId}`);
+          console.log(`After migration for message ${msgId}:`, JSON.stringify(item));
+          migratedCount++;
         } catch (err) {
           console.error(`Failed to migrate message ${msgId} for user ${userId}:`, err);
         }
       }
     }
   }
-  if (anyUpdated) {
+  if (migratedCount > 0) {
     await storage.writeDB();
-    console.log('User mention migration: database updated');
+    console.log(`User mention migration: ${migratedCount} item(s) updated`);
+  } else {
+    console.log('User mention migration: no items updated');
   }
 }
 
