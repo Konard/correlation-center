@@ -323,6 +323,13 @@ async function addItem(ctx, type) {
   const { field, role, channelTemplate } = config[type];
   const timestamp = new Date().toISOString();
   const item = {
+    // Persist full user info for later mentions (e.g. bump)
+    user: {
+      id: ctx.from.id,
+      username: ctx.from.username,
+      first_name: ctx.from.first_name,
+      last_name: ctx.from.last_name
+    },
     [role]: ctx.from.username || ctx.from.first_name || 'unknown',
     guid: uuidv7(),
     description,
@@ -465,22 +472,29 @@ itemTypes.forEach((type) => {
     if (msgId) {
       try { await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId); } catch (e) {}
     }
-    // Re-post to channel
+    // Re-post to channel using clickable mention
     let post;
-    const role = type === 'need' ? 'requestor' : 'supplier';
-    const channelTemplate = type === 'need'
-      ? (desc, name) => `${desc}\n\n<i>Need of @${name}.</i>`
-      : (desc, name) => `${desc}\n\n<i>Resource provided by @${name}.</i>`;
+    // Build mention using stored user info
+    const mention = buildUserMention({
+      id: item.user.id,
+      username: item.user.username,
+      first_name: item.user.first_name,
+      last_name: item.user.last_name,
+      parseMode: 'HTML'
+    });
+    const content = `${item.description}\n\n<i>${
+      type === 'need' ? 'Need of ' + mention : 'Resource provided by ' + mention
+    }.</i>`;
     if (item.fileId) {
       post = await ctx.telegram.sendPhoto(
         CHANNEL_USERNAME,
         item.fileId,
-        { caption: channelTemplate(item.description, item[role]), parse_mode: 'HTML' }
+        { caption: content, parse_mode: 'HTML' }
       );
     } else {
       post = await ctx.telegram.sendMessage(
         CHANNEL_USERNAME,
-        channelTemplate(item.description, item[role]),
+        content,
         { parse_mode: 'HTML' }
       );
     }
