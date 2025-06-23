@@ -1,6 +1,6 @@
 # correlation-center
 
-t.me/CorrelationCenterBot Telegram bot.
+[t.me/CorrelationCenterBot](https://t.me/CorrelationCenterBot) Telegram bot.
 
 The Correlation Center is a system inspired by Jacque Fresco ideas. It ensures that all needs are satisfied using available resources. In short, it's a system to manage needs and resources.
 ## Setup
