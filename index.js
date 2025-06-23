@@ -375,6 +375,11 @@ itemTypes.forEach((type) => {
 
   // Prompt handlers (/need and keyboard)
   bot.command(type, async (ctx) => {
+    // Disallow anonymous (chat/channel) accounts from creating items
+    if (ctx.message.sender_chat) {
+      await ctx.reply(t(ctx, 'anonymousNotAllowed'));
+      return;
+    }
     if (ctx.message.reply_to_message) {
       return addItem(ctx, type);
     }
@@ -386,18 +391,23 @@ itemTypes.forEach((type) => {
       }
     }, PROMPT_DELAY_MS);
   });
-  bot.hears(
-    [t({ from: { language_code: 'en' } }, buttonKey), t({ from: { language_code: 'ru' } }, buttonKey)],
-    async (ctx) => {
-      // Keyboard-triggered same flow with delayed prompt
-      pendingActions[ctx.from.id] = type;
-      setTimeout(() => {
-        if (pendingActions[ctx.from.id] === type) {
-          ctx.reply(t(ctx, promptKey));
-        }
-      }, PROMPT_DELAY_MS);
+  bot.hears([
+    t({ from: { language_code: 'en' } }, buttonKey),
+    t({ from: { language_code: 'ru' } }, buttonKey)
+  ], async (ctx) => {
+    // Disallow anonymous (chat/channel) accounts from creating items
+    if (ctx.message.sender_chat) {
+      await ctx.reply(t(ctx, 'anonymousNotAllowed'));
+      return;
     }
-  );
+    // Keyboard-triggered same flow with delayed prompt
+    pendingActions[ctx.from.id] = type;
+    setTimeout(() => {
+      if (pendingActions[ctx.from.id] === type) {
+        ctx.reply(t(ctx, promptKey));
+      }
+    }, PROMPT_DELAY_MS);
+  });
 
   // Listing handlers using the generic helper
   bot.command(plural, async (ctx) => {
@@ -407,6 +417,11 @@ itemTypes.forEach((type) => {
     t({ from: { language_code: 'en' } }, `buttonMy${capitalizedPlural}`),
     t({ from: { language_code: 'ru' } }, `buttonMy${capitalizedPlural}`)
   ], async (ctx) => {
+    // Disallow anonymous (chat/channel) accounts from creating items
+    if (ctx.message.sender_chat) {
+      await ctx.reply(t(ctx, 'anonymousNotAllowed'));
+      return;
+    }
     await listItems(ctx, type);
   });
 

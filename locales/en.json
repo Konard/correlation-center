@@ -25,5 +25,6 @@
   "resourceAddedPrivate": "Your resource was published at {{channel}}. Use the \"My resources\" button or /resources to view and manage your resources.",
   "actionCancelled": "Your current action has been canceled.",
   "noPendingAction": "You have no pending action to cancel.",
-  "helpGroup": "Available commands:\n/start - Start the bot\n/help - Show this help message\n/need - Add a need\n/resource - Add a resource\n/cancel - Cancel current pending action"
+  "helpGroup": "Available commands:\n/start - Start the bot\n/help - Show this help message\n/need - Add a need\n/resource - Add a resource\n/cancel - Cancel current pending action",
+  "anonymousNotAllowed": "Only personal accounts can create needs or resources."
 }
