@@ -52,13 +52,7 @@ async function migrateUserMentions() {
           console.error(`Failed to fetch chat for user ${userId}:`, err);
           continue;
         }
-        const mention = buildUserMention({
-          id: chat.id,
-          username: chat.username,
-          first_name: chat.first_name,
-          last_name: chat.last_name,
-          parseMode: 'HTML'
-        });
+        const mention = buildUserMention({ user: chat });
         const oldItem = { ...item };
         let newContent;
         if (type === 'needs') {
@@ -259,25 +253,13 @@ async function addItem(ctx, type) {
       field: 'needs',
       role: 'requestor',
       channelTemplate: (description, from) =>
-        `${description}\n\n<i>Need of ${buildUserMention({
-          id: from.id,
-          username: from.username,
-          first_name: from.first_name,
-          last_name: from.last_name,
-          parseMode: 'HTML'
-        })}.</i>`
+        `${description}\n\n<i>Need of ${buildUserMention({ user: from })}.</i>`
     },
     resource: {
       field: 'resources',
       role: 'supplier',
       channelTemplate: (description, from) =>
-        `${description}\n\n<i>Resource provided by ${buildUserMention({
-          id: from.id,
-          username: from.username,
-          first_name: from.first_name,
-          last_name: from.last_name,
-          parseMode: 'HTML'
-        })}.</i>`
+        `${description}\n\n<i>Resource provided by ${buildUserMention({ user: from })}.</i>`
     }
   };
   const { field, role, channelTemplate } = config[type];
@@ -441,13 +423,7 @@ itemTypes.forEach((type) => {
       await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId);
     } catch (e) {}
     // Build mention from repaired item.user
-    const mention = buildUserMention({
-      id: item.user.id,
-      username: item.user.username,
-      first_name: item.user.first_name,
-      last_name: item.user.last_name,
-      parseMode: 'HTML',
-    });
+    const mention = buildUserMention({ user: item.user });
     const content = `${item.description}\n\n<i>${
       type === 'need' ? 'Need of ' + mention : 'Resource provided by ' + mention
     }.</i>`;
