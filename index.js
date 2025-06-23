@@ -112,8 +112,7 @@ const PROMPT_DELAY_MS = Number(process.env.PROMPT_DELAY_MS) || 750;
 // Helper to list items for both needs and resources
 async function listItems(ctx, type) {
   if (ctx.chat.type !== 'private') return;
-  await storage.readDB();
-  const user = storage.getUserData(ctx.from.id);
+  const user = await storage.getUserData(ctx.from.id);
   const plural = `${type}s`;
   const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
   const capitalizedPlural = plural.charAt(0).toUpperCase() + plural.slice(1);
@@ -232,8 +231,7 @@ async function addItem(ctx, type) {
     await ctx.reply(t(ctx, promptKey));
     return;
   }
-  await storage.readDB();
-  const user = storage.getUserData(ctx.from.id);
+  const user = await storage.getUserData(ctx.from.id);
   // Enforce rolling 24-hour creation limits
   const fieldKey = `${type}s`;
   const sinceTs = Date.now() - 24 * 60 * 60 * 1000;
@@ -377,8 +375,7 @@ itemTypes.forEach((type) => {
   // Deletion handlers
   bot.action(new RegExp(`delete_${type}_(\\d+)`), async (ctx) => {
     const msgId = parseInt(ctx.match[1], 10);
-    await storage.readDB();
-    const user = storage.getUserData(ctx.from.id);
+    const user = await storage.getUserData(ctx.from.id);
     const collection = user[plural];
     // Remove items matching channelMessageId
     const removedItems = _.remove(collection, (it) => it.channelMessageId === msgId);
@@ -404,8 +401,7 @@ itemTypes.forEach((type) => {
   const plural = `${type}s`;
   bot.action(new RegExp(`bump_${type}_(\\d+)`), async (ctx) => {
     const msgId = parseInt(ctx.match[1], 10);
-    await storage.readDB();
-    const user = storage.getUserData(ctx.from.id);
+    const user = await storage.getUserData(ctx.from.id);
     const items = user[plural];
     const item = _.find(items, (it) => it.channelMessageId === msgId);
     if (!item) return ctx.answerCbQuery('Not found');
@@ -467,8 +463,8 @@ function getMainKeyboard(ctx) {
 }
 
 bot.start(async (ctx) => {
-  await storage.readDB();
-  storage.getUserData(ctx.from.id);
+  // Ensure we at least have an empty user object in the DB
+  await storage.getUserData(ctx.from.id);
   await storage.writeDB();
   await ctx.reply(t(ctx, 'welcome', { description: t(ctx, 'description') }), getMainKeyboard(ctx));
 });

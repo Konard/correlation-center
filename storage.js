@@ -12,7 +12,10 @@ class Storage {
     await this.db.write();
   }
 
-  getUserData(userId) {
+  async getUserData(userId) {
+    // Ensure latest data is loaded before accessing user
+    await this.db.read();
+    this.db.data ||= { users: {} };
     const id = String(userId);
     if (!this.db.data.users[id]) {
       this.db.data.users[id] = { needs: [], resources: [] };
