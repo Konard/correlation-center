@@ -5,14 +5,28 @@ import { html as htmlFormat, markdown as mdFormat, markdownv2 as mdv2Format } fr
  * Build a Telegram user mention link in various parse modes.
  *
  * @param {Object} options - Options for building the mention link.
- * @param {number|string} options.id - Telegram user ID.
- * @param {string} [options.username] - Telegram username (without '@').
- * @param {string} [options.first_name] - User's first name.
- * @param {string} [options.last_name] - User's last name.
+ * @param {Object} [options.user] - Telegram user object with id, username, first_name, last_name.
+ * @param {number|string} [options.id] - Telegram user ID (overrides user.id).
+ * @param {string} [options.username] - Telegram username (without '@', overrides user.username).
+ * @param {string} [options.first_name] - User's first name (overrides user.first_name).
+ * @param {string} [options.last_name] - User's last name (overrides user.last_name).
  * @param {'HTML'|'Markdown'|'MarkdownV2'} [options.parseMode='HTML'] - The parse mode to use.
  * @returns {string} A formatted mention link for the user.
  */
-export function buildUserMention({ id, username, first_name, last_name, parseMode = 'HTML' }) {
+export function buildUserMention({
+  user,
+  id: idParam,
+  username: usernameParam,
+  first_name: firstNameParam,
+  last_name: lastNameParam,
+  parseMode = 'HTML',
+}) {
+  // Derive core fields from `user` with inline overrides
+  const id = idParam ?? user?.id;
+  const username = usernameParam ?? user?.username;
+  const first_name = firstNameParam ?? user?.first_name;
+  const last_name = lastNameParam ?? user?.last_name;
+   
   let displayName;
   if (username) {
     displayName = `@${username}`;
