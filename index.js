@@ -463,28 +463,50 @@ itemTypes.forEach((type) => {
   bot.action(new RegExp(`bump_${type}_(\\d+)`), async (ctx) => {
     const msgId = parseInt(ctx.match[1], 10);
     await storage.readDB();
-    const user = storage.getUserData(ctx.from.id);
-    const items = user[plural];
-    // Find item by channelMessageId
-    const item = _.find(items, (it) => it.channelMessageId === msgId);
+    // Find item by channelMessageId across all users
+    let item;
+    let ownerId;
+    for (const [uid, userData] of Object.entries(storage.db.data.users)) {
+      const found = userData[plural].find((it) => it.channelMessageId === msgId);
+      if (found) {
+        item = found;
+        ownerId = uid;
+        break;
+      }
+    }
     if (!item) return ctx.answerCbQuery('Not found');
     // Remove old channel message
     if (msgId) {
       try { await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId); } catch (e) {}
     }
-    // Re-post to channel using clickable mention
-    let post;
-    // Build mention using stored user info
+    // Determine user info for mention, fetch if missing
+    let userInfo = item.user;
+    if (!userInfo || !userInfo.id) {
+      try {
+        const chat = await ctx.telegram.getChat(ownerId);
+        userInfo = {
+          id: chat.id,
+          username: chat.username,
+          first_name: chat.first_name,
+          last_name: chat.last_name
+        };
+        // persist user info for future bumps
+        item.user = userInfo;
+      } catch (err) {
+        userInfo = { id: Number(ownerId) };
+      }
+    }
     const mention = buildUserMention({
-      id: item.user.id,
-      username: item.user.username,
-      first_name: item.user.first_name,
-      last_name: item.user.last_name,
+      id: userInfo.id,
+      username: userInfo.username,
+      first_name: userInfo.first_name,
+      last_name: userInfo.last_name,
       parseMode: 'HTML'
     });
     const content = `${item.description}\n\n<i>${
       type === 'need' ? 'Need of ' + mention : 'Resource provided by ' + mention
     }.</i>`;
+    let post;
     if (item.fileId) {
       post = await ctx.telegram.sendPhoto(
         CHANNEL_USERNAME,
