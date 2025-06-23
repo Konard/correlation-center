@@ -463,68 +463,45 @@ itemTypes.forEach((type) => {
   bot.action(new RegExp(`bump_${type}_(\\d+)`), async (ctx) => {
     const msgId = parseInt(ctx.match[1], 10);
     await storage.readDB();
-    // Find item by channelMessageId across all users
-    let item;
-    let ownerId;
-    for (const [uid, userData] of Object.entries(storage.db.data.users)) {
-      const found = userData[plural].find((it) => it.channelMessageId === msgId);
-      if (found) {
-        item = found;
-        ownerId = uid;
-        break;
-      }
-    }
+    const user = storage.getUserData(ctx.from.id);
+    const items = user[plural];
+    const item = _.find(items, (it) => it.channelMessageId === msgId);
     if (!item) return ctx.answerCbQuery('Not found');
+    // Repair missing or damaged user info from ctx.from
+    if (!item.user || item.user.id !== ctx.from.id) {
+      item.user = {
+        id: ctx.from.id,
+        username: ctx.from.username,
+        first_name: ctx.from.first_name,
+        last_name: ctx.from.last_name,
+      };
+    }
     // Remove old channel message
-    if (msgId) {
-      try { await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId); } catch (e) {}
-    }
-    // Determine user info for mention, fetch if missing
-    let userInfo = item.user;
-    if (!userInfo || !userInfo.id) {
-      try {
-        const chat = await ctx.telegram.getChat(ownerId);
-        userInfo = {
-          id: chat.id,
-          username: chat.username,
-          first_name: chat.first_name,
-          last_name: chat.last_name
-        };
-        // persist user info for future bumps
-        item.user = userInfo;
-      } catch (err) {
-        userInfo = { id: Number(ownerId) };
-      }
-    }
+    try {
+      await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId);
+    } catch (e) {}
+    // Build mention from repaired item.user
     const mention = buildUserMention({
-      id: userInfo.id,
-      username: userInfo.username,
-      first_name: userInfo.first_name,
-      last_name: userInfo.last_name,
-      parseMode: 'HTML'
+      id: item.user.id,
+      username: item.user.username,
+      first_name: item.user.first_name,
+      last_name: item.user.last_name,
+      parseMode: 'HTML',
     });
     const content = `${item.description}\n\n<i>${
       type === 'need' ? 'Need of ' + mention : 'Resource provided by ' + mention
     }.</i>`;
     let post;
     if (item.fileId) {
-      post = await ctx.telegram.sendPhoto(
-        CHANNEL_USERNAME,
-        item.fileId,
-        { caption: content, parse_mode: 'HTML' }
-      );
+      post = await ctx.telegram.sendPhoto(CHANNEL_USERNAME, item.fileId, { caption: content, parse_mode: 'HTML' });
     } else {
-      post = await ctx.telegram.sendMessage(
-        CHANNEL_USERNAME,
-        content,
-        { parse_mode: 'HTML' }
-      );
+      post = await ctx.telegram.sendMessage(CHANNEL_USERNAME, content, { parse_mode: 'HTML' });
     }
     item.channelMessageId = post.message_id;
     // Update updatedAt after bump
     item.updatedAt = new Date().toISOString();
     await storage.writeDB();
-    // Update the private chat message: show Updated at and remove Bump button
+    // Update private chat message to show updatedAt and remove bump button
     const capitalized = type.charAt(0).toUpperCase() + type.slice(1);
     const deleteButtonKey = `delete${capitalized}Button`;
     const createdAtStr = formatDate(item.createdAt);
@@ -543,10 +520,10 @@ itemTypes.forEach((type) => {
 });
 function getMainKeyboard(ctx) {
   // Build keyboard rows from itemTypes
-  const newRow = itemTypes.map(type =>
+  const newRow = itemTypes.map((type) =>
     t(ctx, `button${type.charAt(0).toUpperCase() + type.slice(1)}`)
   );
-  const myRow = itemTypes.map(type => {
+  const myRow = itemTypes.map((type) => {
     const plural = `${type}s`;
     return t(ctx, `buttonMy${plural.charAt(0).toUpperCase() + plural.slice(1)}`);
   });
