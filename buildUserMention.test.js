@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { describe, it } from 'node:test';
-import { buildUserMention } from './index.js';
+import { buildUserMention } from './buildUserMention.js';
 
 describe('buildUserMention', () => {
   const id = 12345;
