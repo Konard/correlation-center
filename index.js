@@ -554,7 +554,7 @@ bot.command('cancel', async (ctx) => {
 // Only start the bot outside of test environment
 if (process.env.NODE_ENV !== 'test') {
   console.log('Migrating old user mentions...');
-  await migrateUserMentions({ limit: 1, tracing: true });
+  await migrateUserMentions({ limit: 2, tracing: true });
   console.log('Launching bot...');
   bot.launch().catch((error) => {
     console.error('Failed to launch bot. Please check your BOT_TOKEN:', error);
