@@ -154,6 +154,40 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
   }
 }
 
+/**
+ * Delete channel messages for a given unreachable user.
+ * @param {Object} options
+ * @param {number} options.userId - Telegram ID of the user whose messages should be deleted.
+ * @param {boolean} [options.tracing=false] - Enable detailed tracing logs.
+ */
+async function migrateDeleteUserChannelMessages({ userId, tracing = false } = {}) {
+  if (tracing) console.log(`migrateDeleteUserChannelMessages: starting for user ${userId}`);
+  await storage.readDB();
+  const user = storage.db.data.users?.[userId];
+  if (!user) {
+    if (tracing) console.log(`migrateDeleteUserChannelMessages: no data for user ${userId}`);
+    return;
+  }
+  let deletedCount = 0;
+  for (const type of ['needs', 'resources']) {
+    const items = user[type] || [];
+    for (const item of items) {
+      const msgId = item.channelMessageId;
+      if (!msgId) continue;
+      try {
+        if (tracing) console.log(`migrateDeleteUserChannelMessages: deleting ${type} message ${msgId}`);
+        await bot.telegram.deleteMessage(CHANNEL_USERNAME, msgId);
+        deletedCount++;
+      } catch (err) {
+        if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to delete message ${msgId}`, err);
+      }
+    }
+    user[type] = items.filter(item => !item.channelMessageId);
+  }
+  await storage.writeDB();
+  console.log(`Deleted ${deletedCount} channel message(s) for user ${userId}`);
+}
+
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const pendingActions = {};
@@ -553,6 +587,8 @@ bot.command('cancel', async (ctx) => {
 
 // Only start the bot outside of test environment
 if (process.env.NODE_ENV !== 'test') {
+  console.log('Deleting channel messages for unreachable user 7419276965...');
+  await migrateDeleteUserChannelMessages({ userId: 7419276965, tracing: true });
   console.log('Migrating old user mentions...');
   await migrateUserMentions({ limit: 2, tracing: true });
   console.log('Launching bot...');
