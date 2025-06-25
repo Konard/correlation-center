@@ -102,6 +102,17 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
               { parse_mode: 'HTML' }
             );
           }
+          // Persist full user info for future bumps
+          item.user = {
+            id: chat.id,
+            username: chat.username,
+            first_name: chat.first_name,
+            last_name: chat.last_name
+          };
+          if (tracing) {
+            console.log('migrateUserMentions:      set item.user:');
+            console.log(JSON.stringify(item.user, null, 2));
+          }
           // Update DB record
           const now = new Date().toISOString();
           item.updatedAt = now;
