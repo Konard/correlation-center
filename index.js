@@ -185,9 +185,16 @@ async function migrateDeleteUserChannelMessages({ userId, tracing = false } = {}
         // deletion succeeded: drop item
         deletedCount++;
       } catch (err) {
-        if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to delete message ${msgId}`, err);
-        // deletion failed: keep item
-        retained.push(item);
+        const desc = err.response?.description || err.message;
+        if (/message to delete not found/i.test(desc)) {
+          if (tracing) console.log(`migrateDeleteUserChannelMessages: message ${msgId} already gone, treating as deleted`);
+          deletedCount++;
+          // drop the item on not-found
+        } else {
+          if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to delete message ${msgId}`, err);
+          // deletion failed for other reason: keep item
+          retained.push(item);
+        }
       }
     }
     // replace items array with retained ones only
