@@ -33,9 +33,17 @@ export function buildUserMention({
   } else {
     // Trim all string names, then filter out empty values
     const raw = [first_name, last_name];
-    const trimmedAll = _.map(raw, (rawName) => (_.isString(rawName) ? _.trim(rawName) : rawName));
+    // Trim whitespace and Hangul filler (ㅤ) characters from names
+    const trimmedAll = _.map(raw, (rawName) => (
+      _.isString(rawName) ? _.trim(rawName, ' \t\n\rㅤ') : rawName
+    ));
     const cleaned = _.filter(trimmedAll, (name) => _.isString(name) ? !_.isEmpty(name) : Boolean(name));
-    displayName = cleaned.length ? _.join(cleaned, ' ') : 'unknown';
+    // Use cleaned names or fallback to id
+    if (cleaned.length) {
+      displayName = _.join(cleaned, ' ');
+    } else {
+      displayName = String(id);
+    }
   }
   const link = username ? `https://t.me/${username}` : `tg://user?id=${id}`;
   switch (parseMode) {

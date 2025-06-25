@@ -23,7 +23,7 @@ describe('buildUserMention', () => {
 
     it('falls back to unknown when no name or username provided', () => {
       const result = buildUserMention({ id });
-      assert.strictEqual(result, '<a href="tg://user?id=12345">unknown</a>');
+      assert.strictEqual(result, '<a href="tg://user?id=12345">12345</a>');
     });
 
     it('uses username when provided for HTML', () => {
@@ -81,12 +81,12 @@ describe('buildUserMention', () => {
 
     it('falls back to unknown for whitespace-only names in HTML', () => {
       const result = buildUserMention({ id, first_name: '   ' });
-      assert.strictEqual(result, '<a href="tg://user?id=12345">unknown</a>');
+      assert.strictEqual(result, '<a href="tg://user?id=12345">12345</a>');
     });
 
     it('falls back to unknown for empty string names in HTML', () => {
       const result = buildUserMention({ id, first_name: '', last_name: '' });
-      assert.strictEqual(result, '<a href="tg://user?id=12345">unknown</a>');
+      assert.strictEqual(result, '<a href="tg://user?id=12345">12345</a>');
     });
 
     it('supports non-Latin characters and hash without escaping', () => {
@@ -95,6 +95,15 @@ describe('buildUserMention', () => {
       assert.strictEqual(
         result,
         `<a href="tg://user?id=12345">${name}</a>`
+      );
+    });
+
+    it('falls back to id when only whitespace names provided in user object', () => {
+      const userObj = { id: 7419276965, first_name: 'ㅤ', last_name: 'ㅤ' };
+      const result = buildUserMention({ user: userObj });
+      assert.strictEqual(
+        result,
+        '<a href="tg://user?id=7419276965">7419276965</a>'
       );
     });
   });
@@ -122,7 +131,7 @@ describe('buildUserMention', () => {
 
     it('falls back to unknown in legacy Markdown', () => {
       const result = buildUserMention({ id, parseMode: 'Markdown' });
-      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
+      assert.strictEqual(result, '[12345](tg://user?id=12345)');
     });
 
     it('supports emoji in Markdown', () => {
@@ -162,12 +171,12 @@ describe('buildUserMention', () => {
 
     it('falls back to unknown for whitespace-only names in Markdown', () => {
       const result = buildUserMention({ id, first_name: '   ', parseMode: 'Markdown' });
-      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
+      assert.strictEqual(result, '[12345](tg://user?id=12345)');
     });
 
     it('falls back to unknown for empty string names in Markdown', () => {
       const result = buildUserMention({ id, first_name: '', last_name: '', parseMode: 'Markdown' });
-      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
+      assert.strictEqual(result, '[12345](tg://user?id=12345)');
     });
   });
 
@@ -189,7 +198,7 @@ describe('buildUserMention', () => {
 
     it('falls back to unknown in MarkdownV2', () => {
       const result = buildUserMention({ id, parseMode: 'MarkdownV2' });
-      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
+      assert.strictEqual(result, '[12345](tg://user?id=12345)');
     });
 
     it('supports emoji in MarkdownV2', () => {
@@ -239,12 +248,12 @@ describe('buildUserMention', () => {
 
     it('falls back to unknown for whitespace-only names in MarkdownV2', () => {
       const result = buildUserMention({ id, first_name: '   ', parseMode: 'MarkdownV2' });
-      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
+      assert.strictEqual(result, '[12345](tg://user?id=12345)');
     });
 
     it('falls back to unknown for empty string names in MarkdownV2', () => {
       const result = buildUserMention({ id, first_name: '', last_name: '', parseMode: 'MarkdownV2' });
-      assert.strictEqual(result, '[unknown](tg://user?id=12345)');
+      assert.strictEqual(result, '[12345](tg://user?id=12345)');
     });
   });
 }); 
