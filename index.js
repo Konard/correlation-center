@@ -129,12 +129,11 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
         // Update role field for DB
         const roleField = type === 'needs' ? 'requestor' : 'supplier';
         item[roleField] = chat.username || chat.first_name || 'unknown';
-        // Detect real changes (excluding updatedAt)
-        const origNoTs = _.omit(original, 'updatedAt');
-        const currNoTs = _.omit(item, 'updatedAt');
-        if (_.isEqual(origNoTs, currNoTs)) {
+        // Normalize and detect real changes (excluding updatedAt), stripping undefined fields
+        const origClean = JSON.parse(JSON.stringify(_.omit(original, 'updatedAt')));
+        const currClean = JSON.parse(JSON.stringify(_.omit(item, 'updatedAt')));
+        if (_.isEqual(origClean, currClean)) {
           if (tracing) console.log(`migrateUserMentions: no DB changes detected for message ${msgId}, skipping`);
-          // Do not count towards limit or update timestamp
           continue;
         }
         // Changes detected: set updatedAt and count
