@@ -171,18 +171,27 @@ async function migrateDeleteUserChannelMessages({ userId, tracing = false } = {}
   let deletedCount = 0;
   for (const type of ['needs', 'resources']) {
     const items = user[type] || [];
+    const retained = [];
     for (const item of items) {
       const msgId = item.channelMessageId;
-      if (!msgId) continue;
+      if (!msgId) {
+        // not posted to channel, keep
+        retained.push(item);
+        continue;
+      }
       try {
         if (tracing) console.log(`migrateDeleteUserChannelMessages: deleting ${type} message ${msgId}`);
         await bot.telegram.deleteMessage(CHANNEL_USERNAME, msgId);
+        // deletion succeeded: drop item
         deletedCount++;
       } catch (err) {
         if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to delete message ${msgId}`, err);
+        // deletion failed: keep item
+        retained.push(item);
       }
     }
-    user[type] = items.filter(item => !item.channelMessageId);
+    // replace items array with retained ones only
+    user[type] = retained;
   }
   await storage.writeDB();
   console.log(`Deleted ${deletedCount} channel message(s) for user ${userId}`);
