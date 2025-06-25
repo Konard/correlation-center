@@ -71,7 +71,8 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
           continue;
         }
         const mention = buildUserMention({ user: chat });
-        const oldItem = { ...item };
+        // Clone original item state for change detection
+        const original = _.cloneDeep(item);
         let newContent;
         if (type === 'needs') {
           if (tracing) console.log('migrateUserMentions:      building need content');
@@ -84,7 +85,7 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
         try {
           if (tracing) {
             console.log(`Before migration for message ${msgId}:`);
-            console.log(JSON.stringify(oldItem, null, 2));
+            console.log(JSON.stringify(original, null, 2));
           }
           if (item.fileId) {
             await bot.telegram.editMessageCaption(
@@ -125,11 +126,20 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
           console.log('migrateUserMentions:      set item.user:');
           console.log(JSON.stringify(item.user, null, 2));
         }
-        // Update DB record
-        const now = new Date().toISOString();
-        item.updatedAt = now;
+        // Update role field for DB
         const roleField = type === 'needs' ? 'requestor' : 'supplier';
         item[roleField] = chat.username || chat.first_name || 'unknown';
+        // Detect real changes (excluding updatedAt)
+        const origNoTs = _.omit(original, 'updatedAt');
+        const currNoTs = _.omit(item, 'updatedAt');
+        if (_.isEqual(origNoTs, currNoTs)) {
+          if (tracing) console.log(`migrateUserMentions: no DB changes detected for message ${msgId}, skipping`);
+          // Do not count towards limit or update timestamp
+          continue;
+        }
+        // Changes detected: set updatedAt and count
+        const now = new Date().toISOString();
+        item.updatedAt = now;
         if (tracing) {
           console.log(`After migration for message ${msgId}:`);
           console.log(JSON.stringify(item, null, 2));
