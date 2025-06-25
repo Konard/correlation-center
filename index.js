@@ -190,6 +190,19 @@ async function migrateDeleteUserChannelMessages({ userId, tracing = false } = {}
           if (tracing) console.log(`migrateDeleteUserChannelMessages: message ${msgId} already gone, treating as deleted`);
           deletedCount++;
           // drop the item on not-found
+        } else if (/message can'?t be deleted/i.test(desc)) {
+          if (tracing) console.log(`migrateDeleteUserChannelMessages: message ${msgId} can't be deleted, marking as deleted via edit`);
+          try {
+            if (item.fileId) {
+              await bot.telegram.editMessageCaption(CHANNEL_USERNAME, msgId, undefined, 'Deleted.');
+            } else {
+              await bot.telegram.editMessageText(CHANNEL_USERNAME, msgId, undefined, 'Deleted.');
+            }
+          } catch (editErr) {
+            if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to edit message ${msgId}`, editErr);
+          }
+          deletedCount++;
+          // drop the item after editing
         } else {
           if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to delete message ${msgId}`, err);
           // deletion failed for other reason: keep item
