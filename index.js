@@ -81,8 +81,10 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
           newContent = `${item.description}\n\n<i>Resource provided by ${mention}.</i>`;
         }
         try {
-          if (tracing) console.log(`migrateUserMentions:      applying update to message ${msgId}`);
-          console.log(`Before migration for message ${msgId}:`, JSON.stringify(oldItem));
+          if (tracing) {
+            console.log(`Before migration for message ${msgId}:`);
+            console.log(JSON.stringify(oldItem, null, 2));
+          }
           if (item.fileId) {
             await bot.telegram.editMessageCaption(
               CHANNEL_USERNAME,
@@ -105,7 +107,10 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
           item.updatedAt = now;
           const roleField = type === 'needs' ? 'requestor' : 'supplier';
           item[roleField] = chat.username || chat.first_name || 'unknown';
-          if (tracing) console.log(`migrateUserMentions:      updated item: ${JSON.stringify(item)}`);
+          if (tracing) {
+            console.log(`After migration for message ${msgId}:`);
+            console.log(JSON.stringify(item, null, 2));
+          }
           migratedCount++;
         } catch (err) {
           if (tracing) console.error(`migrateUserMentions:      failed to update message ${msgId}`, err);
