@@ -191,18 +191,33 @@ async function migrateDeleteUserChannelMessages({ userId, tracing = false } = {}
           deletedCount++;
           // drop the item on not-found
         } else if (/message can'?t be deleted/i.test(desc)) {
-          if (tracing) console.log(`migrateDeleteUserChannelMessages: message ${msgId} can't be deleted, marking as deleted via edit`);
+          if (tracing) console.log(`migrateDeleteUserChannelMessages: message ${msgId} can't be deleted, attempting to mark as Deleted.`);
+          let edited = false;
+          // try editing text
           try {
-            if (item.fileId) {
-              await bot.telegram.editMessageCaption(CHANNEL_USERNAME, msgId, undefined, 'Deleted.');
-            } else {
-              await bot.telegram.editMessageText(CHANNEL_USERNAME, msgId, undefined, 'Deleted.');
-            }
+            await bot.telegram.editMessageText(CHANNEL_USERNAME, msgId, undefined, 'Deleted.');
+            edited = true;
           } catch (editErr) {
-            if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to edit message ${msgId}`, editErr);
+            const desc2 = editErr.response?.description || editErr.message;
+            if (/MESSAGE_ID_INVALID/i.test(desc2)) {
+              // fallback to editing caption
+              try {
+                await bot.telegram.editMessageCaption(CHANNEL_USERNAME, msgId, undefined, 'Deleted.');
+                edited = true;
+              } catch (editErr2) {
+                if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to edit caption for message ${msgId}`, editErr2);
+              }
+            } else {
+              if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to edit message ${msgId}`, editErr);
+            }
           }
-          deletedCount++;
-          // drop the item after editing
+          if (edited) {
+            deletedCount++;
+            // drop the item after editing
+          } else {
+            // editing failed, retain item
+            retained.push(item);
+          }
         } else {
           if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to delete message ${msgId}`, err);
           // deletion failed for other reason: keep item
@@ -616,11 +631,12 @@ bot.command('cancel', async (ctx) => {
 
 // Only start the bot outside of test environment
 if (process.env.NODE_ENV !== 'test') {
-  console.log('Deleting channel messages for unreachable user 7419276965...');
-  await migrateDeleteUserChannelMessages({ userId: 7419276965, tracing: true });
-  console.log('Migrating old user mentions...');
-  await migrateUserMentions({ limit: 2, tracing: true });
-  console.log('Launching bot...');
+  // await migrateDeleteUserChannelMessages({ userId: 7419276965, tracing: true });
+  // await migrateDeleteUserChannelMessages({ userId: 7474624462, tracing: true });
+  // await migrateDeleteUserChannelMessages({ userId: 5309502176, tracing: true });
+  // await migrateDeleteUserChannelMessages({ userId: 1673752450, tracing: true });
+  // console.log('Migrating old user mentions...');
+  // await migrateUserMentions({ limit: 2, tracing: true });
   bot.launch().catch((error) => {
     console.error('Failed to launch bot. Please check your BOT_TOKEN:', error);
     process.exit(1);
