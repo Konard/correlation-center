@@ -71,8 +71,31 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
           continue;
         }
         const mention = buildUserMention({ user: chat });
-        // Clone original item state for change detection
+        // Clone and prepare DB updates
         const original = _.cloneDeep(item);
+        // Persist full user info for future bumps
+        item.user = {
+          id: chat.id,
+          username: chat.username,
+          first_name: chat.first_name,
+          last_name: chat.last_name
+        };
+        if (tracing) {
+          console.log('migrateUserMentions:      set item.user:');
+          console.log(JSON.stringify(item.user, null, 2));
+        }
+        // Update role field for DB
+        const roleField = type === 'needs' ? 'requestor' : 'supplier';
+        item[roleField] = chat.username || chat.first_name || 'unknown';
+        if (tracing) console.log(`migrateUserMentions:      set ${roleField}: ${item[roleField]}`);
+        // Detect real changes (excluding updatedAt), stripping undefined fields
+        const origClean = JSON.parse(JSON.stringify(_.omit(original, 'updatedAt')));
+        const currClean = JSON.parse(JSON.stringify(_.omit(item, 'updatedAt')));
+        if (_.isEqual(origClean, currClean)) {
+          if (tracing) console.log(`migrateUserMentions: no DB changes detected for message ${msgId}, skipping API call`);
+          continue;
+        }
+        // Build new content only when change detected
         let newContent;
         if (type === 'needs') {
           if (tracing) console.log('migrateUserMentions:      building need content');
@@ -81,12 +104,9 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
           if (tracing) console.log('migrateUserMentions:      building resource content');
           newContent = `${item.description}\n\n<i>Resource provided by ${mention}.</i>`;
         }
-        // Attempt to edit message; treat 'message is not modified' as success
+        // Now perform API call; treat 'message is not modified' as non-error
         try {
-          if (tracing) {
-            console.log(`Before migration for message ${msgId}:`);
-            console.log(JSON.stringify(original, null, 2));
-          }
+          if (tracing) console.log(`migrateUserMentions: editing message ${msgId}`);
           if (item.fileId) {
             await bot.telegram.editMessageCaption(
               CHANNEL_USERNAME,
@@ -111,32 +131,10 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
           } else {
             if (tracing) console.error(`migrateUserMentions: failed to update message ${msgId}`, err);
             console.error(`Failed to migrate message ${msgId} for user ${userId}:`, err);
-            // skip persisting in DB for genuine errors
             continue;
           }
         }
-        // Persist full user info for future bumps
-        item.user = {
-          id: chat.id,
-          username: chat.username,
-          first_name: chat.first_name,
-          last_name: chat.last_name
-        };
-        if (tracing) {
-          console.log('migrateUserMentions:      set item.user:');
-          console.log(JSON.stringify(item.user, null, 2));
-        }
-        // Update role field for DB
-        const roleField = type === 'needs' ? 'requestor' : 'supplier';
-        item[roleField] = chat.username || chat.first_name || 'unknown';
-        // Normalize and detect real changes (excluding updatedAt), stripping undefined fields
-        const origClean = JSON.parse(JSON.stringify(_.omit(original, 'updatedAt')));
-        const currClean = JSON.parse(JSON.stringify(_.omit(item, 'updatedAt')));
-        if (_.isEqual(origClean, currClean)) {
-          if (tracing) console.log(`migrateUserMentions: no DB changes detected for message ${msgId}, skipping`);
-          continue;
-        }
-        // Changes detected: set updatedAt and count
+        // After successful API and DB change, set updatedAt and count
         const now = new Date().toISOString();
         item.updatedAt = now;
         if (tracing) {
