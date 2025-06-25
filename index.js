@@ -31,36 +31,57 @@ function t(ctx, key, vars = {}) {
 const storage = new Storage();
 await storage.initDB();
 
-// Migrate old user mentions to new clickable mentions on startup (up to MIGRATE_LIMIT items)
-async function migrateUserMentions() {
-  const LIMIT = Number(process.env.MIGRATE_LIMIT) || 1;
+/**
+ * Migrate old user mentions to clickable mentions.
+ * @param {Object} [options]
+ * @param {number} [options.limit=Number(process.env.MIGRATE_LIMIT)||1] - Max items to migrate per run.
+ * @param {boolean} [options.tracing=false] - Enable detailed tracing logs.
+ */
+async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) || 1, tracing = false } = {}) {
+  if (tracing) console.log(`migrateUserMentions: starting migration with limit=${limit}`);
   let migratedCount = 0;
+  if (tracing) console.log('migrateUserMentions: reading database');
   await storage.readDB();
   const users = storage.db.data.users || {};
+  if (tracing) console.log(`migrateUserMentions: found ${Object.keys(users).length} users in DB`);
   outer: for (const [userId, user] of Object.entries(users)) {
+    if (tracing) console.log(`migrateUserMentions: inspecting user ${userId}`);
     for (const type of ['needs', 'resources']) {
+      if (tracing) console.log(`migrateUserMentions:  checking type ${type}`);
       const items = user[type] || [];
       for (const item of items) {
+        if (tracing) console.log(`migrateUserMentions:    processing item channelMessageId=${item.channelMessageId}`);
         const msgId = item.channelMessageId;
-        if (!msgId) continue;
-        if (migratedCount >= LIMIT) break outer;
+        if (!msgId) {
+          if (tracing) console.log('migrateUserMentions:      skip - no channelMessageId');
+          continue;
+        }
+        if (migratedCount >= limit) {
+          if (tracing) console.log('migrateUserMentions:      reached limit, stopping');
+          break outer;
+        }
         // Fetch chat to build mention
         let chat;
         try {
+          if (tracing) console.log(`migrateUserMentions:      fetching chat for user ${userId}`);
           chat = await bot.telegram.getChat(userId);
+          if (tracing) console.log(`migrateUserMentions:      fetched chat: ${JSON.stringify(chat)}`);
         } catch (err) {
-          console.error(`Failed to fetch chat for user ${userId}:`, err);
+          if (tracing) console.error(`migrateUserMentions:      failed to fetch chat for ${userId}`, err);
           continue;
         }
         const mention = buildUserMention({ user: chat });
         const oldItem = { ...item };
         let newContent;
         if (type === 'needs') {
+          if (tracing) console.log('migrateUserMentions:      building need content');
           newContent = `${item.description}\n\n<i>Need of ${mention}.</i>`;
         } else {
+          if (tracing) console.log('migrateUserMentions:      building resource content');
           newContent = `${item.description}\n\n<i>Resource provided by ${mention}.</i>`;
         }
         try {
+          if (tracing) console.log(`migrateUserMentions:      applying update to message ${msgId}`);
           console.log(`Before migration for message ${msgId}:`, JSON.stringify(oldItem));
           if (item.fileId) {
             await bot.telegram.editMessageCaption(
@@ -84,15 +105,17 @@ async function migrateUserMentions() {
           item.updatedAt = now;
           const roleField = type === 'needs' ? 'requestor' : 'supplier';
           item[roleField] = chat.username || chat.first_name || 'unknown';
-          console.log(`After migration for message ${msgId}:`, JSON.stringify(item));
+          if (tracing) console.log(`migrateUserMentions:      updated item: ${JSON.stringify(item)}`);
           migratedCount++;
         } catch (err) {
+          if (tracing) console.error(`migrateUserMentions:      failed to update message ${msgId}`, err);
           console.error(`Failed to migrate message ${msgId} for user ${userId}:`, err);
         }
       }
     }
   }
   if (migratedCount > 0) {
+    if (tracing) console.log('migrateUserMentions: writing DB updates');
     await storage.writeDB();
     console.log(`User mention migration: ${migratedCount} item(s) updated`);
   } else {
@@ -499,8 +522,8 @@ bot.command('cancel', async (ctx) => {
 
 // Only start the bot outside of test environment
 if (process.env.NODE_ENV !== 'test') {
-  // console.log('Migrating old user mentions...');
-  // await migrateUserMentions();
+  console.log('Migrating old user mentions...');
+  await migrateUserMentions({ limit: 1, tracing: true });
   console.log('Launching bot...');
   bot.launch().catch((error) => {
     console.error('Failed to launch bot. Please check your BOT_TOKEN:', error);
