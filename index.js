@@ -80,6 +80,7 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
           if (tracing) console.log('migrateUserMentions:      building resource content');
           newContent = `${item.description}\n\n<i>Resource provided by ${mention}.</i>`;
         }
+        // Attempt to edit message; treat 'message is not modified' as success
         try {
           if (tracing) {
             console.log(`Before migration for message ${msgId}:`);
@@ -102,31 +103,38 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
               { parse_mode: 'HTML' }
             );
           }
-          // Persist full user info for future bumps
-          item.user = {
-            id: chat.id,
-            username: chat.username,
-            first_name: chat.first_name,
-            last_name: chat.last_name
-          };
-          if (tracing) {
-            console.log('migrateUserMentions:      set item.user:');
-            console.log(JSON.stringify(item.user, null, 2));
-          }
-          // Update DB record
-          const now = new Date().toISOString();
-          item.updatedAt = now;
-          const roleField = type === 'needs' ? 'requestor' : 'supplier';
-          item[roleField] = chat.username || chat.first_name || 'unknown';
-          if (tracing) {
-            console.log(`After migration for message ${msgId}:`);
-            console.log(JSON.stringify(item, null, 2));
-          }
-          migratedCount++;
         } catch (err) {
-          if (tracing) console.error(`migrateUserMentions:      failed to update message ${msgId}`, err);
-          console.error(`Failed to migrate message ${msgId} for user ${userId}:`, err);
+          const desc = err.response?.description || '';
+          if (/message is not modified/i.test(desc)) {
+            if (tracing) console.log(`migrateUserMentions: message not modified, skipping error`);
+          } else {
+            if (tracing) console.error(`migrateUserMentions: failed to update message ${msgId}`, err);
+            console.error(`Failed to migrate message ${msgId} for user ${userId}:`, err);
+            // skip persisting in DB for genuine errors
+            continue;
+          }
         }
+        // Persist full user info for future bumps
+        item.user = {
+          id: chat.id,
+          username: chat.username,
+          first_name: chat.first_name,
+          last_name: chat.last_name
+        };
+        if (tracing) {
+          console.log('migrateUserMentions:      set item.user:');
+          console.log(JSON.stringify(item.user, null, 2));
+        }
+        // Update DB record
+        const now = new Date().toISOString();
+        item.updatedAt = now;
+        const roleField = type === 'needs' ? 'requestor' : 'supplier';
+        item[roleField] = chat.username || chat.first_name || 'unknown';
+        if (tracing) {
+          console.log(`After migration for message ${msgId}:`);
+          console.log(JSON.stringify(item, null, 2));
+        }
+        migratedCount++;
       }
     }
   }
