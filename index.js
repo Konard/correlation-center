@@ -154,6 +154,45 @@ async function migrateUserMentions({ limit = Number(process.env.MIGRATE_LIMIT) |
   }
 }
 
+// Insert deleteChannelMessage helper function to encapsulate deletion or marking as deleted
+async function deleteChannelMessage({ telegram, channel, msgId, tracing = false }) {
+  try {
+    if (tracing) console.log(`deleteChannelMessage: deleting message ${msgId}`);
+    await telegram.deleteMessage(channel, msgId);
+    return true;
+  } catch (err) {
+    const desc = err.response?.description || err.message;
+    if (/message to delete not found/i.test(desc)) {
+      if (tracing) console.log(`deleteChannelMessage: message ${msgId} already gone`);
+      return true;
+    } else if (/message can'?t be deleted/i.test(desc)) {
+      if (tracing) console.log(`deleteChannelMessage: message ${msgId} can't be deleted, marking as deleted`);
+      let edited = false;
+      try {
+        await telegram.editMessageText(channel, msgId, undefined, 'Deleted.');
+        edited = true;
+      } catch (editErr) {
+        const desc2 = editErr.response?.description || editErr.message;
+        if (/MESSAGE_ID_INVALID/i.test(desc2)) {
+          // fallback to editing caption
+          try {
+            await telegram.editMessageCaption(channel, msgId, undefined, 'Deleted.');
+            edited = true;
+          } catch (editErr2) {
+            if (tracing) console.error(`deleteChannelMessage: failed to edit caption for message ${msgId}`, editErr2);
+          }
+        } else {
+          if (tracing) console.error(`deleteChannelMessage: failed to edit message ${msgId}`, editErr);
+        }
+      }
+      return edited;
+    } else {
+      if (tracing) console.error(`deleteChannelMessage: failed to delete message ${msgId}`, err);
+      return false;
+    }
+  }
+}
+
 /**
  * Delete channel messages for a given unreachable user.
  * @param {Object} options
@@ -179,50 +218,12 @@ async function migrateDeleteUserChannelMessages({ userId, tracing = false } = {}
         retained.push(item);
         continue;
       }
-      try {
-        if (tracing) console.log(`migrateDeleteUserChannelMessages: deleting ${type} message ${msgId}`);
-        await bot.telegram.deleteMessage(CHANNEL_USERNAME, msgId);
-        // deletion succeeded: drop item
+      // Attempt deletion or marking as deleted
+      if (tracing) console.log(`migrateDeleteUserChannelMessages: deleting ${type} message ${msgId}`);
+      if (await deleteChannelMessage({ telegram: bot.telegram, channel: CHANNEL_USERNAME, msgId, tracing })) {
         deletedCount++;
-      } catch (err) {
-        const desc = err.response?.description || err.message;
-        if (/message to delete not found/i.test(desc)) {
-          if (tracing) console.log(`migrateDeleteUserChannelMessages: message ${msgId} already gone, treating as deleted`);
-          deletedCount++;
-          // drop the item on not-found
-        } else if (/message can'?t be deleted/i.test(desc)) {
-          if (tracing) console.log(`migrateDeleteUserChannelMessages: message ${msgId} can't be deleted, attempting to mark as Deleted.`);
-          let edited = false;
-          // try editing text
-          try {
-            await bot.telegram.editMessageText(CHANNEL_USERNAME, msgId, undefined, 'Deleted.');
-            edited = true;
-          } catch (editErr) {
-            const desc2 = editErr.response?.description || editErr.message;
-            if (/MESSAGE_ID_INVALID/i.test(desc2)) {
-              // fallback to editing caption
-              try {
-                await bot.telegram.editMessageCaption(CHANNEL_USERNAME, msgId, undefined, 'Deleted.');
-                edited = true;
-              } catch (editErr2) {
-                if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to edit caption for message ${msgId}`, editErr2);
-              }
-            } else {
-              if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to edit message ${msgId}`, editErr);
-            }
-          }
-          if (edited) {
-            deletedCount++;
-            // drop the item after editing
-          } else {
-            // editing failed, retain item
-            retained.push(item);
-          }
-        } else {
-          if (tracing) console.error(`migrateDeleteUserChannelMessages: failed to delete message ${msgId}`, err);
-          // deletion failed for other reason: keep item
-          retained.push(item);
-        }
+      } else {
+        retained.push(item);
       }
     }
     // replace items array with retained ones only
@@ -515,9 +516,8 @@ itemTypes.forEach((type) => {
       return ctx.answerCbQuery('Not found');
     }
     const removed = removedItems[0];
-    try {
-      await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId);
-    } catch (e) {}
+    // Use helper to delete or mark as deleted
+    await deleteChannelMessage({ telegram: ctx.telegram, channel: CHANNEL_USERNAME, msgId });
     await storage.writeDB();
     const createdAt = formatDate(removed.createdAt);
     const deletedAt = formatDate();
@@ -546,10 +546,8 @@ itemTypes.forEach((type) => {
         last_name: ctx.from.last_name,
       };
     }
-    // Remove old channel message
-    try {
-      await ctx.telegram.deleteMessage(CHANNEL_USERNAME, msgId);
-    } catch (e) {}
+    // Remove old channel message or mark as deleted
+    await deleteChannelMessage({ telegram: ctx.telegram, channel: CHANNEL_USERNAME, msgId });
     // Build mention from repaired item.user
     const mention = buildUserMention({ user: item.user });
     const content = `${item.description}\n\n<i>${
