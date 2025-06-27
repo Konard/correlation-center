@@ -9,6 +9,7 @@ Create a `.env` file with your Telegram bot token:
 
 ```
 BOT_TOKEN=your-telegram-bot-token
+ENABLE_REPOSTS=true  # Optional: enable repost mode to forward user message and post metadata separately
 ```
 
 Install dependencies with Bun:

@@ -241,6 +241,8 @@ const CHANNEL_USERNAME = '@CorrelationCenter';
 const DAILY_LIMITS = { need: 3, resource: 3 };
 // Delay (ms) before prompting user for description when pending action is set
 const PROMPT_DELAY_MS = Number(process.env.PROMPT_DELAY_MS) || 750;
+// Feature flag to enable repost mode: forward original user message to channel and post metadata separately
+const ENABLE_REPOSTS = process.env.ENABLE_REPOSTS !== 'false';
 
 // Helper to list items for both needs and resources
 async function listItems(ctx, type) {
@@ -412,7 +414,26 @@ async function addItem(ctx, type) {
   if (fileId) item.fileId = fileId;
   try {
     let post;
-    if (fileId) {
+    if (ENABLE_REPOSTS) {
+      // Forward the original user message to the channel
+      const forwarded = await ctx.telegram.forwardMessage(
+        CHANNEL_USERNAME,
+        ctx.chat.id,
+        ctx.message.message_id
+      );
+      // Store the forwarded message ID for reference
+      item.descriptionMessageId = forwarded.message_id;
+      // Send metadata only (without description) as a reply to the forwarded message
+      const mention = buildUserMention({ user: ctx.from });
+      const metadata = type === 'need'
+        ? `<i>Need of ${mention}.</i>`
+        : `<i>Resource provided by ${mention}.</i>`;
+      post = await ctx.telegram.sendMessage(
+        CHANNEL_USERNAME,
+        metadata,
+        { parse_mode: 'HTML', reply_to_message_id: forwarded.message_id }
+      );
+    } else if (fileId) {
       post = await ctx.telegram.sendPhoto(
         CHANNEL_USERNAME,
         fileId,
