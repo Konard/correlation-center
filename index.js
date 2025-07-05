@@ -242,7 +242,7 @@ const DAILY_LIMITS = { need: 3, resource: 3 };
 // Delay (ms) before prompting user for description when pending action is set
 const PROMPT_DELAY_MS = Number(process.env.PROMPT_DELAY_MS) || 750;
 // Feature flag to enable repost mode: forward original user message to channel and post metadata separately
-const ENABLE_REPOSTS = process.env.ENABLE_REPOSTS !== 'false';
+const ENABLE_REPOSTS = process.env.ENABLE_REPOSTS === 'true';
 
 // Helper to list items for both needs and resources
 async function listItems(ctx, type) {
