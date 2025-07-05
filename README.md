@@ -14,12 +14,18 @@ ENABLE_REPOSTS=true  # Optional: enable repost mode to forward user message and 
 
 Install dependencies with Bun:
 
-```
+```bash
 bun install
 ```
 
 Start the bot with Bun:
 
-```
+```bash
 bun run start
+```
+
+Start with log (tee):
+
+```bash
+bun run start 2>&1 | tee log.txt
 ```
