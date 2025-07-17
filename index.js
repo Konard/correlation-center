@@ -706,7 +706,18 @@ bot.start(async (ctx) => {
   // Ensure we at least have an empty user object in the DB
   await storage.getUserData(ctx.from.id);
   await storage.writeDB();
-  await ctx.reply(t(ctx, 'welcome', { description: t(ctx, 'description') }), getMainKeyboard(ctx));
+  
+  // Check if we need to show explicit bot mentions in the welcome message
+  let welcomeText = t(ctx, 'welcome', { description: t(ctx, 'description') });
+  if (ctx.chat.type !== 'private') {
+    const isOnlyBot = await isOnlyBotInChat(ctx);
+    if (!isOnlyBot) {
+      // Replace /help with explicit bot mention in welcome message
+      welcomeText = welcomeText.replace('/help', '/help@CorrelationCenterBot');
+    }
+  }
+  
+  await ctx.reply(welcomeText, getMainKeyboard(ctx));
 });
 
 // Handle all incoming messages (text or images) for adding items
