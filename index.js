@@ -417,6 +417,19 @@ async function addItem(ctx, type) {
     await ctx.reply(t(ctx, promptKey));
     return;
   }
+  
+  // Additional safety check: prevent bot system message content from being published
+  if (description) {
+    const variants = getAllBotMessageVariants();
+    const isSystemMessageContent = variants.some(variant => 
+      description.trim().startsWith(variant.trim())
+    );
+    if (isSystemMessageContent) {
+      // This looks like a bot system message content, don't publish it
+      await ctx.reply(t(ctx, promptKey));
+      return;
+    }
+  }
   const user = await storage.getUserData(ctx.from.id);
   // Enforce rolling 24-hour creation limits
   const fieldKey = `${type}s`;
@@ -770,6 +783,20 @@ bot.on('message', async (ctx, next) => {
     const promptKey = `prompt${action.charAt(0).toUpperCase() + action.slice(1)}`;
     await ctx.reply(t(ctx, promptKey));
     return;
+  }
+  
+  // Additional check: if the message content itself looks like a bot system message, don't publish it
+  if (ctx.message.text) {
+    const variants = getAllBotMessageVariants();
+    const isSystemMessageContent = variants.some(variant => 
+      ctx.message.text.trim().startsWith(variant.trim())
+    );
+    if (isSystemMessageContent) {
+      // This looks like a bot system message content, don't publish it
+      const promptKey = `prompt${action.charAt(0).toUpperCase() + action.slice(1)}`;
+      await ctx.reply(t(ctx, promptKey));
+      return;
+    }
   }
   
   await addItem(ctx, action);
