@@ -20,7 +20,7 @@ const locales = {
 // Translation helper
 function t(ctx, key, vars = {}) {
   const lang = locales[ctx.from.language_code] ? ctx.from.language_code : 'en';
-  let text = locales[lang][key] || locales['en'][key] || key;
+  let text = (locales[lang].messages && locales[lang].messages[key]) || locales[lang][key] || locales['en'].messages?.[key] || locales['en'][key] || key;
   Object.keys(vars).forEach((k) => {
     text = text.replace(`{{${k}}}`, vars[k]);
   });
@@ -254,10 +254,10 @@ async function isOnlyBotInChat(ctx) {
   if (ctx.chat.type === 'private') {
     return true; // Always true for private chats
   }
-  
+
   try {
     const administrators = await ctx.telegram.getChatAdministrators(ctx.chat.id);
-    const otherBots = administrators.filter(admin => 
+    const otherBots = administrators.filter(admin =>
       admin.user.is_bot && admin.user.id !== ctx.from.id
     );
     return otherBots.length === 0;
@@ -265,6 +265,27 @@ async function isOnlyBotInChat(ctx) {
     console.log(`Could not check administrators for chat ${ctx.chat.id}:`, error.message);
     return false; // Assume there are other bots if we can't check
   }
+}
+
+// Helper function to get all help/start/prompt messages in all languages
+function getAllBotMessageVariants() {
+  const variants = new Set();
+  for (const lang of Object.keys(locales)) {
+    if (locales[lang].messages) {
+      for (const key of Object.keys(locales[lang].messages)) {
+        variants.add(locales[lang].messages[key]);
+      }
+    }
+  }
+  return Array.from(variants);
+}
+
+// Helper function to check if a message is a help/start/prompt message from our bot
+function isBotSystemMessage(msg, botId) {
+  if (!msg || !msg.from || msg.from.id !== botId) return false;
+  if (!msg.text) return false;
+  const variants = getAllBotMessageVariants();
+  return variants.some(variant => msg.text.trim().startsWith(variant.trim()));
 }
 
 // Helper to list items for both needs and resources
@@ -324,6 +345,13 @@ async function addItem(ctx, type) {
 
   // If command used as a reply, take replied message as input
   if (ctx.message.text && ctx.message.text.startsWith('/') && ctx.message.reply_to_message) {
+    // Check if this is a command reply (like /resource to a help message)
+    if (isBotSystemMessage(ctx.message.reply_to_message, bot.botInfo.id)) {
+      // Don't treat command replies as content to publish
+      await ctx.reply(t(ctx, promptKey));
+      return;
+    }
+
     const replied = ctx.message.reply_to_message;
     const isFromChannel = replied.forward_from_chat && replied.forward_from_chat.username === channelName;
     if (replied.photo && replied.photo.length > 0) {
@@ -506,9 +534,21 @@ itemTypes.forEach((type) => {
       await ctx.reply(t(ctx, 'anonymousNotAllowed'));
       return;
     }
+
+    // Check if this is a reply to a help/start message
     if (ctx.message.reply_to_message) {
+      if (isBotSystemMessage(ctx.message.reply_to_message, bot.botInfo.id)) {
+        // Just switch to the new mode without publishing
+        const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+        pendingActions[pendingKey] = type;
+        await ctx.reply(t(ctx, promptKey));
+        return;
+      }
+
+      // For other replies, proceed with normal addItem logic
       return addItem(ctx, type);
     }
+
     // Set pending and schedule prompt after delay
     const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
     pendingActions[pendingKey] = type;
@@ -645,7 +685,7 @@ bot.start(async (ctx) => {
   if (ctx.chat.type !== 'private') {
     // Check if the bot was explicitly mentioned in the command
     const botMentioned = ctx.message.text && ctx.message.text.includes('@');
-    
+
     // If bot was not explicitly mentioned, check for other bots
     if (!botMentioned) {
       const isOnlyBot = await isOnlyBotInChat(ctx);
@@ -655,7 +695,7 @@ bot.start(async (ctx) => {
       }
     }
   }
-  
+
   // Ensure we at least have an empty user object in the DB
   await storage.getUserData(ctx.from.id);
   await storage.writeDB();
