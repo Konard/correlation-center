@@ -752,6 +752,15 @@ bot.on('message', async (ctx, next) => {
   const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
   const action = pendingActions[pendingKey];
   if (!action) return next();
+  
+  // Check if this is a reply to a bot system message
+  if (ctx.message.reply_to_message && isBotSystemMessage(ctx.message.reply_to_message, bot.botInfo.id)) {
+    // Don't publish bot system messages, just switch to the new mode
+    const promptKey = `prompt${action.charAt(0).toUpperCase() + action.slice(1)}`;
+    await ctx.reply(t(ctx, promptKey));
+    return;
+  }
+  
   await addItem(ctx, action);
 });
 
