@@ -673,11 +673,18 @@ function getMainKeyboard(ctx) {
   const newRow = itemTypes.map((type) =>
     t(ctx, `button${type.charAt(0).toUpperCase() + type.slice(1)}`)
   );
-  const myRow = itemTypes.map((type) => {
-    const plural = `${type}s`;
-    return t(ctx, `buttonMy${plural.charAt(0).toUpperCase() + plural.slice(1)}`);
-  });
-  return Markup.keyboard([newRow, myRow]).resize();
+  
+  // Only show "My needs" and "My resources" buttons in private chats
+  if (ctx.chat.type === 'private') {
+    const myRow = itemTypes.map((type) => {
+      const plural = `${type}s`;
+      return t(ctx, `buttonMy${plural.charAt(0).toUpperCase() + plural.slice(1)}`);
+    });
+    return Markup.keyboard([newRow, myRow]).resize();
+  } else {
+    // In group chats, only show the "New need" and "New resource" buttons
+    return Markup.keyboard([newRow]).resize();
+  }
 }
 
 bot.start(async (ctx) => {
