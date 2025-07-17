@@ -706,6 +706,42 @@ bot.start(async (ctx) => {
 bot.on('message', async (ctx, next) => {
   // If user sent /cancel, bypass addItem so cancel command can run
   if (ctx.message.text && ctx.message.text.startsWith('/cancel')) return next();
+  
+  // Check if this is a command-like text (clicked from help message)
+  if (ctx.message.text && ctx.message.text.startsWith('/')) {
+    const command = ctx.message.text.split(' ')[0].toLowerCase();
+    if (command === '/need' || command === '/resource') {
+      // Handle as if it were a command
+      const type = command === '/need' ? 'need' : 'resource';
+      
+      // Check if this is a reply to a bot system message
+      if (ctx.message.reply_to_message && isBotSystemMessage(ctx.message.reply_to_message, bot.botInfo.id)) {
+        // Just switch to the new mode without publishing
+        const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+        pendingActions[pendingKey] = type;
+        const promptKey = `prompt${type.charAt(0).toUpperCase() + type.slice(1)}`;
+        await ctx.reply(t(ctx, promptKey));
+        return;
+      }
+      
+      // For other replies, proceed with normal addItem logic
+      if (ctx.message.reply_to_message) {
+        return addItem(ctx, type);
+      }
+      
+      // Set pending and schedule prompt after delay
+      const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+      pendingActions[pendingKey] = type;
+      setTimeout(() => {
+        if (pendingActions[pendingKey] === type) {
+          const promptKey = `prompt${type.charAt(0).toUpperCase() + type.slice(1)}`;
+          ctx.reply(t(ctx, promptKey));
+        }
+      }, PROMPT_DELAY_MS);
+      return;
+    }
+  }
+  
   const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
   const action = pendingActions[pendingKey];
   if (!action) return next();
