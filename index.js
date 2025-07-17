@@ -235,7 +235,7 @@ async function migrateDeleteUserChannelMessages({ userId, tracing = false } = {}
 
 // Initialize bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const pendingActions = {};
+const pendingActions = {}; // Structure: { "userId_chatId": action }
 const CHANNEL_USERNAME = '@CorrelationCenter';
 // Daily posting limits per user
 const DAILY_LIMITS = { need: 3, resource: 3 };
@@ -243,6 +243,11 @@ const DAILY_LIMITS = { need: 3, resource: 3 };
 const PROMPT_DELAY_MS = Number(process.env.PROMPT_DELAY_MS) || 750;
 // Feature flag to enable repost mode: forward original user message to channel and post metadata separately
 const ENABLE_REPOSTS = process.env.ENABLE_REPOSTS === 'true';
+
+// Helper function to generate pending action key
+function getPendingActionKey(userId, chatId) {
+  return `${userId}_${chatId}`;
+}
 
 // Helper to list items for both needs and resources
 async function listItems(ctx, type) {
@@ -378,7 +383,8 @@ async function addItem(ctx, type) {
   const limit = DAILY_LIMITS[type];
   if (recentItems.length >= limit) {
     await ctx.reply(t(ctx, limitKey, { count: recentItems.length, limit }));
-    delete pendingActions[ctx.from.id];
+    const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+    delete pendingActions[pendingKey];
     return;
   }
   const config = {
@@ -458,7 +464,8 @@ async function addItem(ctx, type) {
   const groupKey = type === 'need' ? 'needAdded' : 'resourceAdded';
   const replyKey = ctx.chat.type === 'private' ? privateKey : groupKey;
   await ctx.reply(t(ctx, replyKey, { channel: CHANNEL_USERNAME }));
-  delete pendingActions[ctx.from.id];
+  const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+  delete pendingActions[pendingKey];
 }
 // Helper to format timestamps consistently
 function formatDate(ts) {
@@ -485,9 +492,10 @@ itemTypes.forEach((type) => {
       return addItem(ctx, type);
     }
     // Set pending and schedule prompt after delay
-    pendingActions[ctx.from.id] = type;
+    const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+    pendingActions[pendingKey] = type;
     setTimeout(() => {
-      if (pendingActions[ctx.from.id] === type) {
+      if (pendingActions[pendingKey] === type) {
         ctx.reply(t(ctx, promptKey));
       }
     }, PROMPT_DELAY_MS);
@@ -502,9 +510,10 @@ itemTypes.forEach((type) => {
       return;
     }
     // Keyboard-triggered same flow with delayed prompt
-    pendingActions[ctx.from.id] = type;
+    const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+    pendingActions[pendingKey] = type;
     setTimeout(() => {
-      if (pendingActions[ctx.from.id] === type) {
+      if (pendingActions[pendingKey] === type) {
         ctx.reply(t(ctx, promptKey));
       }
     }, PROMPT_DELAY_MS);
@@ -624,7 +633,8 @@ bot.start(async (ctx) => {
 bot.on('message', async (ctx, next) => {
   // If user sent /cancel, bypass addItem so cancel command can run
   if (ctx.message.text && ctx.message.text.startsWith('/cancel')) return next();
-  const action = pendingActions[ctx.from.id];
+  const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+  const action = pendingActions[pendingKey];
   if (!action) return next();
   await addItem(ctx, action);
 });
@@ -640,8 +650,9 @@ bot.command('help', async (ctx) => {
 
 // Cancel any pending action
 bot.command('cancel', async (ctx) => {
-  if (pendingActions[ctx.from.id]) {
-    delete pendingActions[ctx.from.id];
+  const pendingKey = getPendingActionKey(ctx.from.id, ctx.chat.id);
+  if (pendingActions[pendingKey]) {
+    delete pendingActions[pendingKey];
     await ctx.reply(t(ctx, 'actionCancelled'));
   } else {
     await ctx.reply(t(ctx, 'noPendingAction'));
