@@ -249,6 +249,24 @@ function getPendingActionKey(userId, chatId) {
   return `${userId}_${chatId}`;
 }
 
+// Helper function to check if this is the only bot in the chat
+async function isOnlyBotInChat(ctx) {
+  if (ctx.chat.type === 'private') {
+    return true; // Always true for private chats
+  }
+  
+  try {
+    const administrators = await ctx.telegram.getChatAdministrators(ctx.chat.id);
+    const otherBots = administrators.filter(admin => 
+      admin.user.is_bot && admin.user.id !== ctx.from.id
+    );
+    return otherBots.length === 0;
+  } catch (error) {
+    console.log(`Could not check administrators for chat ${ctx.chat.id}:`, error.message);
+    return false; // Assume there are other bots if we can't check
+  }
+}
+
 // Helper to list items for both needs and resources
 async function listItems(ctx, type) {
   if (ctx.chat.type !== 'private') return;
@@ -630,21 +648,9 @@ bot.start(async (ctx) => {
     
     // If bot was not explicitly mentioned, check for other bots
     if (!botMentioned) {
-      try {
-        // Get chat administrators to check for other bots
-        const administrators = await ctx.telegram.getChatAdministrators(ctx.chat.id);
-        const otherBots = administrators.filter(admin => 
-          admin.user.is_bot && admin.user.id !== ctx.from.id
-        );
-        
-        // If there are other bots besides this one, don't respond to /start
-        if (otherBots.length > 0) {
-          // Don't respond to /start in group chats with multiple bots
-          return;
-        }
-      } catch (error) {
-        // If we can't get administrators (e.g., not an admin), don't respond
-        console.log(`Could not check administrators for chat ${ctx.chat.id}:`, error.message);
+      const isOnlyBot = await isOnlyBotInChat(ctx);
+      if (!isOnlyBot) {
+        // Don't respond to /start in group chats with multiple bots
         return;
       }
     }
@@ -671,7 +677,14 @@ bot.command('help', async (ctx) => {
   if (ctx.chat.type === 'private') {
     await ctx.reply(t(ctx, 'help'));
   } else {
-    await ctx.reply(t(ctx, 'helpGroup'));
+    const isOnlyBot = await isOnlyBotInChat(ctx);
+    if (isOnlyBot) {
+      await ctx.reply(t(ctx, 'helpGroup'));
+    } else {
+      // Show help with explicit bot mention
+      const helpText = t(ctx, 'helpGroup').replace('/start', '/start@CorrelationCenterBot');
+      await ctx.reply(helpText);
+    }
   }
 });
 
