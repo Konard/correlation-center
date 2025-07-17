@@ -774,7 +774,9 @@ bot.command('help', async (ctx) => {
       await ctx.reply(t(ctx, 'helpGroup'));
     } else {
       // Show help with explicit bot mention
-      const helpText = t(ctx, 'helpGroup').replace('/start', '/start@CorrelationCenterBot');
+      const helpText = t(ctx, 'helpGroup')
+        .replace('/start', '/start@CorrelationCenterBot')
+        .replace('/help', '/help@CorrelationCenterBot');
       await ctx.reply(helpText);
     }
   }
