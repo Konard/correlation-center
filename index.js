@@ -623,6 +623,27 @@ function getMainKeyboard(ctx) {
 }
 
 bot.start(async (ctx) => {
+  // In group chats, only allow /start if this is the only bot
+  if (ctx.chat.type !== 'private') {
+    try {
+      // Get chat administrators to check for other bots
+      const administrators = await ctx.telegram.getChatAdministrators(ctx.chat.id);
+      const otherBots = administrators.filter(admin => 
+        admin.user.is_bot && admin.user.id !== ctx.from.id
+      );
+      
+      // If there are other bots besides this one, don't respond to /start
+      if (otherBots.length > 0) {
+        // Don't respond to /start in group chats with multiple bots
+        return;
+      }
+    } catch (error) {
+      // If we can't get administrators (e.g., not an admin), don't respond
+      console.log(`Could not check administrators for chat ${ctx.chat.id}:`, error.message);
+      return;
+    }
+  }
+  
   // Ensure we at least have an empty user object in the DB
   await storage.getUserData(ctx.from.id);
   await storage.writeDB();
