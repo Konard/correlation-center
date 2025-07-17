@@ -273,7 +273,13 @@ function getAllBotMessageVariants() {
   for (const lang of Object.keys(locales)) {
     if (locales[lang].messages) {
       for (const key of Object.keys(locales[lang].messages)) {
-        variants.add(locales[lang].messages[key]);
+        const message = locales[lang].messages[key];
+        variants.add(message);
+        // Always add a variant with both replacements
+        const withMentions = message
+          .replace(/\/start/g, '/start@CorrelationCenterBot')
+          .replace(/\/help/g, '/help@CorrelationCenterBot');
+        if (withMentions !== message) variants.add(withMentions);
       }
     }
   }
